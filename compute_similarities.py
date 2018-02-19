@@ -87,7 +87,7 @@ def compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 
     return avgd_similarities
 
 
-def compute_score(similarities, weights):
+def compute_score(similarities, weights={'rgb':1.0, 'warped_optical_flow':1.5}):
     '''
     Conditions:
     :param similarities: { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
@@ -107,7 +107,7 @@ def compute_score(similarities, weights):
     return scores
 
 
-def determine_matches(scores, threshold):
+def determine_matches(scores, threshold=0.8):
     '''
     Conditions:
     :param scores:   {<video_clip_id>: score} from compute_score

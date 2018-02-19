@@ -37,10 +37,10 @@
     * compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', clip_duration=10)   
     _Output:_
     *       avgd_similarities = {video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]}}
-    * compute_score(similarities, weights)  
+    * compute_score(similarities, weights={'rgb':1.0, 'warped_optical_flow':1.5})  
     _Output:_
     *       scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
-    * determine_matches(scores, threshold)  
+    * determine_matches(scores, threshold=0.8)  
     _Output:_
     *       match_indicator: {<video_clip_id>: <True or False>}
     * optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow'))  
