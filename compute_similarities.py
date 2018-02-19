@@ -107,6 +107,19 @@ def compute_score(similarities, weights):
     return scores
 
 
+def determine_matches(scores, threshold):
+    '''
+    Conditions:
+    :param scores:   {<video_clip_id>: score} from compute_score
+    :param threshold: real threshold, either the initial default or a new threshold_optimum from optimize_weights
+    :return: match_indicator: {<video_clip_id>: <True or False>}
+    '''
+    match_indicator = {}
+    for key, value in scores.items():
+        match_indicator[key] = value >= threshold
+    return match_indicator
+
+
 def optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow')):
     '''
     Conditions:
