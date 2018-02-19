@@ -34,9 +34,10 @@
     but I will change that so it is an argument of load_db.py.  Normally parent_dir is the same as OUT_FOLDER_2 from step 2.
     
 5. compute_similarities.py contains the following:
-    * compute_similarities
-    * compute_score
-    * optimize_weights
+    * compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', clip_duration=10)
+    
+    * compute_score(similarities, weights)
+    * optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow'))
     
     python compute_similarities.py:
      * will run the code for a default video name and reference clip hard coded in "main".  I am using this for testing, it is not meant
