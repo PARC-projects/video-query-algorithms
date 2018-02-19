@@ -11,9 +11,19 @@ Also assume warped optical flow and rgb are being used
 
 def compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 'warped_optical_flow'),
                          feature_name='global_pool', clip_duration=10):
-    # search_set describes which clips to search over.  Currently not used.
-    # returns avgd_similarities dictionary:
-    #       { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
+    '''
+    Conditions
+    :param ref_video: str name of reference video
+    :param ref_clip: int clip number for the reference video.
+                    For a 10 sec clip duration, ref_clip = int( reference time in seconds / 10 ) + 1
+    :param search_set: str name of the search set that the user wants to search over.  Currently not used.
+                    For now, we search over all clips in the database
+    :param streams: tuple of names of streams that we are using to assess similarity.
+    :param feature_name:  str name of feature for which similarities are to be computed.
+    :param clip_duration: int duration in seconds of clips of interest
+    :return: avgd_similarities = {video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]}}
+    '''
+
     # database connection
     conn_cs = psycopg2.connect("host=localhost dbname=video-query user=torres")
     cur_cs = conn_cs.cursor()
@@ -78,11 +88,13 @@ def compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 
 
 
 def compute_score(similarities, weights):
-    # call function with (rgb_emsemble_similarity, wOF_ensemble_similarity, weights)
-    # compute score for each video
-    # similarities is the dictionary created by compute_similarities
-    # { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
-    # weights is a dictionary of weights: {<stream_type>:<weight>}
+    '''
+    Conditions:
+    :param similarities: { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
+    :param weights: {<stream_type>:<weight>}
+    :return: scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
+    '''
+
     scores = {}
     for video_clip_id, vsim in similarities.items():
         ssum = 0
@@ -96,6 +108,15 @@ def compute_score(similarities, weights):
 
 
 def optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow')):
+    '''
+    Conditions:
+    :param similarities: { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
+    :param user_matches: {<video clip id>: <0 or 1 to indicate whether user says it is a match>}
+    :param streams: tuple of names of streams that we are using to assess similarity.
+    :return: scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
+             new_weights: {<stream>: weight}  there should be an entry for every item in streams.
+             threshold_optimum: real value of computed threshold to use to separate matches from non-matches
+    '''
     # finds grid point with minimum loss, and locally fits a parabola to further minimize
     # user_matches = {<video clip id>: <0 or 1 to indicate whether user says it is a match>}
     # dims is number of grid dimensions:
@@ -132,16 +153,19 @@ def optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical
     weight_optimum = popt[3]
     threshold_optimum = popt[4]
     # compute score at optimal weight and return
-    score_optimized = compute_score(similarities, {streams[0]: 1.0, streams[1]: weight_optimum})
-    return score_optimized, weight_optimum, threshold_optimum
+    new_weights = {streams[0]: 1.0, streams[1]: weight_optimum}
+    score_optimized = compute_score(similarities, new_weights)
+    return score_optimized, new_weights, threshold_optimum
 
 
 def quad_fun(x, a0, b0, c0, w0, th0):
+    # function provided to scipy.optimize.curve_fit
     return a0 * (x[0] - w0) ** 2 + b0 * (x[1] - th0) ** 2 + c0
 
 
 if __name__ == '__main__':
     result = compute_similarities('S06NDS_Sample_120406_1451_00186_Forward', 11, '')
+    assert 1==0
     clip_scores = compute_score(result, {'rgb': 1.0, 'warped_optical_flow': 1.5})
     conn = psycopg2.connect("host=localhost dbname=video-query user=torres")
     cur = conn.cursor()
