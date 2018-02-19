@@ -34,16 +34,20 @@
     but I will change that so it is an argument of load_db.py.  Normally parent_dir is the same as OUT_FOLDER_2 from step 2.
     
 5. compute_similarities.py contains the following:
-    * compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', clip_duration=10)
-    *       outputs avgd_similarities = {video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]}}
-    * compute_score(similarities, weights)
-    *       outputs scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
-    * determine_matches(scores, threshold)
-    *       outputs match_indicator: {<video_clip_id>: <True or False>}
-    * optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow'))
-    *       outputs scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
-             new_weights: {<stream>: weight}  there should be an entry for every item in streams.
-             threshold_optimum: real value of computed threshold to use to separate matches from non-matches
+    * compute_similarities(ref_video, ref_clip, search_set='all', streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', clip_duration=10)   
+    _Output:_
+    *       avgd_similarities = {video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]}}
+    * compute_score(similarities, weights)  
+    _Output:_
+    *       scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
+    * determine_matches(scores, threshold)  
+    _Output:_
+    *       match_indicator: {<video_clip_id>: <True or False>}
+    * optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow'))  
+    _Outputs:_
+    *       scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
+            new_weights: {<stream>: weight}  there should be an entry for every item in streams.
+            threshold_optimum: real value of computed threshold to use to separate matches from non-matches
     
     python compute_similarities.py:
      * will run the code for a default video name and reference clip hard coded in "main".  I am using this for testing, it is not meant
