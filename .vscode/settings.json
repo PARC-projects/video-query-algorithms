@@ -1,6 +1,8 @@
 {
   "terminal.integrated.shell.windows": "C:\\WINDOWS\\Sysnative\\bash.exe",
   "cSpell.words": [
+    "msecs",
     "strftime"
-  ]
+  ],
+  "python.formatting.provider": "yapf"
 }
