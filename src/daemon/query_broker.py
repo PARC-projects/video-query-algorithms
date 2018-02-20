@@ -2,6 +2,7 @@
 
 This script is designed to be executed as a long running service.
 
+TODO: Consider shifting to a daemonize approach to manage this process.
 """
 import threading
 import logging
@@ -12,15 +13,17 @@ LOG_NAME = 'logs/query_broker_{0}.log'.format(
 
 logging.basicConfig(
     format='%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s',
-    filename=LOG_NAME,
-    level=logging.DEBUG)
+    level=logging.DEBUG,
+    handlers=[
+        logging.FileHandler(LOG_NAME),
+        logging.StreamHandler()
+    ])
 
-
-def hello_world():
-    threading.Timer(2.0, hello_world).start()  # called every 2 seconds
+def broker():
+    threading.Timer(2.0, broker).start()  # called every 2 seconds
     logging.debug('This message should go to the log file')
     logging.info('So should this')
     logging.warning('And this, too')
 
 
-hello_world()
+broker()
