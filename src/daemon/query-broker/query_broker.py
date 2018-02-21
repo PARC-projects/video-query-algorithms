@@ -22,6 +22,7 @@ logging.basicConfig(
 
 
 def broker():
+    '''Execute long pooling loop'''
     threading.Timer(LOOP_EXECUTION_TIME, broker).start()
     logging.debug('This message should go to the log file and stdOut')
     logging.info('So should this')
