@@ -8,7 +8,7 @@ import threading
 import status
 from datetime import datetime
 
-LOOP_EXECUTION_TIME = 2.0  # In seconds
+LOOP_EXECUTION_TIME = 10.0  # In seconds
 LOG_NAME = 'logs/query_broker_{0}.log'.format(
     datetime.now().strftime("%Y_%m_%d"))
 
@@ -17,7 +17,6 @@ def main():
     '''Execute long pooling loop'''
     queryStatus = status.QueryStatus()
     threading.Timer(LOOP_EXECUTION_TIME, main).start()
-    logging.debug('Hello')
     queryStatus.getStatus()
 
 
