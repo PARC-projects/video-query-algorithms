@@ -24,24 +24,40 @@ class QueryStatus():
                 compute_new_matches: <Query>
             }
         """
-        self._getStatusComputeSimilarity()
-        self._getStatusOptimize()
-        self._getStatusNewComputeSimilarity()
+
+        return {
+            'compute_similarity': self._getStatusComputeSimilarity(),
+            'optimize_weight': self._getStatusOptimize(),
+            'compute_new_matches': self._getStatusNewComputeSimilarity()
+        }
 
     def _getStatusComputeSimilarity(self):
         response = self._makeRequest(
             BASE_URL + "query-state/compute-similarity")
-        logger.info(response['documentation_url'])
+        return response
 
     def _getStatusOptimize(self):
         response = self._makeRequest(BASE_URL + "query-state/optimize")
-        logger.info(response['documentation_url'])
+        return response
 
     def _getStatusNewComputeSimilarity(self):
         response = self._makeRequest(
             BASE_URL + "query-state/new-compute-similarity")
-        logger.info(response['message'])
+        return response
 
     def _makeRequest(self, url):
-        response = requests.get('https://github.com/timeline.json')
-        return response.json()
+        try:
+            response = requests.get('https://github.com/timeline.json')
+            if response.status_code == requests.codes.ok:
+                return response.json()
+            else:
+                logger.info(response.status_code)
+                return None
+        except requests.exceptions.HTTPError as errh:
+            logger.error("Http Error: " + errh)
+        except requests.exceptions.ConnectionError as errc:
+            logger.warning("Error Connecting: " + errc)
+        except requests.exceptions.Timeout as errt:
+            logger.warning("Timeout Error: " + errt)
+        except requests.exceptions.RequestException as err:
+            logger.warning("OOps: Something Else " + err)
