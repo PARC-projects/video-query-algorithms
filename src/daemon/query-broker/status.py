@@ -1,16 +1,14 @@
-"""Make requests for Queries based on status
+"""Make requests for Queries based on processing state
 """
+import requests
+import logging
+logger = logging.getLogger(__name__)
+
+BASE_URL = "http://127.0.0.1:8000/"
 
 class QueryStatus():
     """
     Request queries that meet processing_state requirements
-
-    Returns:
-        {
-            compute_similarity: <Query>,
-            optimize_weight: <Query>,
-            compute_new_similarity: <Query>
-        }
     """
 
     def getStatus(self):
@@ -24,40 +22,19 @@ class QueryStatus():
                 compute_new_matches: <Query>
             }
         """
+        logging.debug('get')
+        self._getStatusComputeSimilarity()
+        self._getStatusOptimize()
+        self._getStatusNewComputeSimilarity()
 
-    def getStatusComputeSimilarity(self):
-        """
-        Request queries that meet processing_state requirements
+    def _getStatusComputeSimilarity(self):
+        url = BASE_URL + "query-state/compute-similarity"
+        logging.debug(url)
 
-        Returns:
-            {
-                compute_similarity: <Query>,
-                optimize_weight: <Query>,
-                compute_new_matches: <Query>
-            }
-        """
+    def _getStatusOptimize(self):
+        url = BASE_URL + "query-state/optimize"
+        logging.debug(url)
 
-    def getStatusGetOptimize(self):
-        """
-        Request queries that meet processing_state requirements
-
-        Returns:
-            {
-                compute_similarity: <Query>,
-                optimize_weight: <Query>,
-                compute_new_matches: <Query>
-            }
-        """
-
-    def getStatusNewComputeSimilarity(self):
-        """
-        Request queries that meet processing_state requirements
-
-        Returns:
-            {
-                compute_similarity: <Query>,
-                optimize_weight: <Query>,
-                compute_new_matches: <Query>
-            }
-        """
-
+    def _getStatusNewComputeSimilarity(self):
+        url = BASE_URL + "query-state/new-compute-similarity"
+        logging.debug(url)
