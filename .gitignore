@@ -1,5 +1,6 @@
 # Project specific
 src/daemon/query-broker/logs
+/.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
