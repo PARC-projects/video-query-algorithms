@@ -9,28 +9,27 @@ import os
 class QueryStatus():
     BASE_URL = "http://127.0.0.1:8000/"
     logger = logging.getLogger(__name__)
-    headers = {'Authorization': ''}
+    headers = {}
 
     def getStatus(self):
+        """Request queries that meet processing_state requirements
         """
-        Request queries that meet processing_state requirements
-        Returns:
-        """
-
         try:
             self._authenticate()
+            revision = self._getStatusComputeSimilarity()
+            new = self._getStatusNewComputeSimilarity()
             return {
-                'compute_similarity': self._getStatusComputeSimilarity(),
-                'compute_new_matches': self._getStatusNewComputeSimilarity()
+                'compute_similarity': revision,
+                'compute_new_matches': new
             }
         except requests.exceptions.HTTPError as errh:
-            self.logger.error("Http Error: " + errh)
+            self.logger.error("Http Error: {}".format(errh))
         except requests.exceptions.ConnectionError as errc:
             self.logger.warning("Error Connecting: {}".format(errc))
         except requests.exceptions.Timeout as errt:
-            self.logger.warning("Timeout Error: " + errt)
+            self.logger.warning("Timeout Error: {}".format(errt))
         except requests.exceptions.RequestException as err:
-            self.logger.warning("OOps: Something Else " + err)
+            self.logger.warning("OOps: Something Else {}".format(err))
 
 
     def _getStatusComputeSimilarity(self):
@@ -52,8 +51,7 @@ class QueryStatus():
 
 
     def _authenticate(self):
-        """
-        Request a token and set store for future use
+        """Request a token and set store for future use
         """
         # Make request
         response = requests.post(
