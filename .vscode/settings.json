@@ -1,0 +1,12 @@
+{
+  "terminal.integrated.shell.windows": "C:\\WINDOWS\\Sysnative\\bash.exe",
+  "cSpell.words": [
+    "daemonize",
+    "errc",
+    "errh",
+    "errt",
+    "msecs",
+    "strftime"
+  ],
+  "python.formatting.provider": "yapf"
+}
