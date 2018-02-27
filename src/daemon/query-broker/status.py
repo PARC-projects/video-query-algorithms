@@ -18,10 +18,7 @@ class QueryStatus():
             self._authenticate()
             revision = self._getStatusComputeSimilarity()
             new = self._getStatusNewComputeSimilarity()
-            return {
-                'compute_similarity': revision,
-                'compute_new_matches': new
-            }
+            return {'compute_similarity': revision, 'compute_new_matches': new}
         except requests.exceptions.HTTPError as errh:
             self.logger.error("Http Error: {}".format(errh))
         except requests.exceptions.ConnectionError as errc:
@@ -30,7 +27,6 @@ class QueryStatus():
             self.logger.warning("Timeout Error: {}".format(errt))
         except requests.exceptions.RequestException as err:
             self.logger.warning("OOps: Something Else {}".format(err))
-
 
     def _getStatusComputeSimilarity(self):
         response = self._makeRequest(
@@ -49,23 +45,17 @@ class QueryStatus():
         else:
             return {}
 
-
     def _authenticate(self):
         """Request a token and set store for future use
         """
         # Make request
         response = requests.post(
             self.BASE_URL + 'api-token-auth/',
-            data = {
+            data={
                 'username': os.environ['API_CLIENT_USERNAME'],
                 'password': os.environ['API_CLIENT_PASSWORD']
-            }
-        )
+            })
 
         # Set header
         self.headers['Authorization'] = "Token {}".format(
-                    response.json()['token'])
-
-
-
-
+            response.json()['token'])
