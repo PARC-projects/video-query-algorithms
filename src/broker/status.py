@@ -19,14 +19,8 @@ class QueryStatus():
             revision = self._getStatusComputeSimilarity()
             new = self._getStatusNewComputeSimilarity()
             return {'compute_similarity': revision, 'compute_new_matches': new}
-        except requests.exceptions.HTTPError as errh:
-            self.logger.error("Http Error: {}".format(errh))
-        except requests.exceptions.ConnectionError as errc:
-            self.logger.warning("Error Connecting: {}".format(errc))
-        except requests.exceptions.Timeout as errt:
-            self.logger.warning("Timeout Error: {}".format(errt))
-        except requests.exceptions.RequestException as err:
-            self.logger.warning("OOps: Something Else {}".format(err))
+        except Exception as e:
+            logging.error(e)
 
     def _getStatusComputeSimilarity(self):
         response = self._makeRequest(

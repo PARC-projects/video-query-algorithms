@@ -25,7 +25,10 @@ def main():
     '''Execute long pooling loop'''
     queryStatus = status.QueryStatus()
     threading.Timer(LOOP_EXECUTION_TIME, main).start()
-    logging.info(queryStatus.getStatus())
+    try:
+        queryStatus.getStatus()
+    except Exception as e:
+        logging.error(e)
 
 
 if __name__ == '__main__':
