@@ -12,11 +12,16 @@ charset = utf-8
 
 # Docstrings and comments use max_line_length = 79
 [*.py]
-max_line_length = 119
+max_line_length = 120
 
 # Use 2 spaces for the HTML files
 [*.html]
 indent_size = 2
+
+# Use 2 spaces for the HTML files
+[*.md]
+indent_size = 2
+max_line_length = 120
 
 # The JSON files contain newlines inconsistently
 [*.json]

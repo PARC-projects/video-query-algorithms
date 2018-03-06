@@ -1,22 +1,15 @@
-# video-query-algorithms
+# Video Query Algorithms
 
-### Pipeline overview:
-1.  use build_wof_clips.py to build all the rgb and warped optical flow jpeg files, in a specified directory structure.
-      This program calls Temporal Segment Networks (TSN) code, and it assumes the command below is being run from the main TSN directory.
-      Code is written to run on a GPU compute server.
+## Pipeline Overview
 
-2.  use calcSig_wOF_ensemble.sh to compute features for all clips, stored in csv files within a specified directory structure.
-      This script calls calcSig_wOF.py, which uses Temporal Segment Networks code to compute global_pool features for CNN defined in Caffe. If other options are desired, call calcSig_wOF.py directly, using calls like those in calcSig_wOF_ensemble.sh.
-
-3.  create_db.py can create the postgres "features", "cnn_streams", and "video_clips" tables, as well as load the "cnn_streams" table.  The cnn_streams table is just a lookup table, whose sole purpose is to avoid problems with possibly spelling or capitalizing stream names in different ways.
-
-4.   load_db.py loads the "features" table, given csv files with features from steps 1 and 2.
-
-5.  compute_similarities.py computes similarity values for the similarity between a given reference clip and all other clips.
-      All of the code in this repository is a work in progress, but this file in particular is currently being coded.
+1. Use `build_wof_clips.py` to build all the rgb and warped optical flow jpeg files, in a specified directory structure. This program calls Temporal Segment Networks (TSN) code, and it assumes the command below is being run from the main TSN directory. Code is written to run on a GPU compute server.
+2. Use `calcSig_wOF_ensemble.sh` to compute features for all clips, stored in csv files within a specified directory structure. This script calls `calcSig_wOF.py`, which uses Temporal Segment Networks code to compute global_pool features for CNN defined in Caffe. If other options are desired, call `calcSig_wOF.py` directly, using calls like those in `calcSig_wOF_ensemble.sh`.
+3. `create_db.py` can create the postgres "features", "cnn_streams", and "video_clips" tables, as well as load the "cnn_streams" table.  The cnn_streams table is just a lookup table, whose sole purpose is to avoid problems with possibly spelling or capitalizing stream names in different ways.
+4. `load_db.py` loads the "features" table, given csv files with features from steps 1 and 2.
+5. `compute_similarities.py` computes similarity values for the similarity between a given reference clip and all other clips. All of the code in this repository is a work in progress, but this file in particular is currently being coded.
 
 ### Detailed command line instructions
-1.    python tools/build_wof_clips.py  SRC_FOLDER  OUT_FOLDER    num_worker  NUM_WORKER    new_width 340 --new_height 256 2>local/errors.log
+1.  Python tools/build_wof_clips.py  SRC_FOLDER  OUT_FOLDER    num_worker  NUM_WORKER    new_width 340 --new_height 256 2>local/errors.log
          *	SRC_FOLDER (e.g. UCF-101_test/) is the folder with the videos
          *	OUT_FOLDER (e.g. UCF-101_test_warp_frames/) is the output folder that will be populated with the frames and warped optical flow images.  There is a subdirectory for each video, holding the jpg frames and optical flow images for that video.
          *	NUM_WORKER (e.g. = 16, the default) is the number of CPU's to spread the work across. For demeter, 16 seems to be a good number if there are 16 or more videos.  Higher is not necessarily faster, as getting files on and off the GPU's can  be rate limiting.  There will not be more cpu processes than the number of videos, so NUM_WORKER greater than the number of videos has no effect.
