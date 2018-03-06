@@ -28,7 +28,7 @@ Computes similarity values for the similarity between a given reference clip and
 ### build_wof_clips.py
 
 ```bash
-python build_wof_clips.py  SRC_FOLDER  OUT_FOLDER    num_worker  NUM_WORKER    new_width 340 --new_height 256 2>local/errors.log
+python build_wof_clips.py SRC_FOLDER OUT_FOLDER num_worker NUM_WORKER  new_width 340 --new_height 256 2>local/errors.log
 ```
 
 *	SRC_FOLDER
@@ -157,19 +157,6 @@ threshold_optimum
 * `<video_clip_id>` is the id primary key in the video_clips table.
 * There should be an entry for every item in streams.
 * The real value of computed threshold to use to separate matches from non-matches
-
-#### compute_similarities
-
-*Input*
-```python
-
-```
-
-*Output*
-
-    python compute_similarities.py:
-     * will run the code for a default video name and reference clip hard coded in "main".  I am using this for testing, it is not meant
-    to be something the app does.
 
 ## Environment Variables
 
