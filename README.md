@@ -28,7 +28,7 @@ Computes similarity values for the similarity between a given reference clip and
 ### build_wof_clips.py
 
 ```bash
-python build_wof_clips.py SRC_FOLDER OUT_FOLDER num_worker NUM_WORKER  new_width 340 --new_height 256 2>local/errors.log
+python build_wof_clips.py SRC_FOLDER OUT_FOLDER num_worker NUM_WORKER new_width 340 --new_height 256 2>local/errors.log
 ```
 
 *	SRC_FOLDER
