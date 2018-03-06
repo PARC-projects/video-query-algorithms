@@ -1,4 +1,4 @@
-## How to contribute to the Video Query API
+## How to contribute to the Video Query Algorithms
 
 #### **Did you find a bug?**
 
@@ -11,7 +11,7 @@ demonstrating the expected behavior that is not occurring.
 
 #### **Do you have questions about the source code?**
 
-* Ask any question about how to use Ruby on Rails in the [Issues](https://github.com/fetorres/video-query-algorithms/issues).
+* Ask any question about how to use Video Query Algorithms in the [Issues](https://github.com/fetorres/video-query-algorithms/issues).
 
 #### **Do you intend to add a new feature or change an existing one?**
 
