@@ -9,7 +9,7 @@
 5. `compute_similarities.py` computes similarity values for the similarity between a given reference clip and all other clips. All of the code in this repository is a work in progress, but this file in particular is currently being coded.
 
 ### Detailed command line instructions
-1.  Python tools/build_wof_clips.py  SRC_FOLDER  OUT_FOLDER    num_worker  NUM_WORKER    new_width 340 --new_height 256 2>local/errors.log
+1.    python tools/build_wof_clips.py  SRC_FOLDER  OUT_FOLDER    num_worker  NUM_WORKER    new_width 340 --new_height 256 2>local/errors.log
          *	SRC_FOLDER (e.g. UCF-101_test/) is the folder with the videos
          *	OUT_FOLDER (e.g. UCF-101_test_warp_frames/) is the output folder that will be populated with the frames and warped optical flow images.  There is a subdirectory for each video, holding the jpg frames and optical flow images for that video.
          *	NUM_WORKER (e.g. = 16, the default) is the number of CPU's to spread the work across. For demeter, 16 seems to be a good number if there are 16 or more videos.  Higher is not necessarily faster, as getting files on and off the GPU's can  be rate limiting.  There will not be more cpu processes than the number of videos, so NUM_WORKER greater than the number of videos has no effect.
