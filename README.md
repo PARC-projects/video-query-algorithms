@@ -1,6 +1,6 @@
 # Video Query Algorithms
 
-### Pipeline Overview
+## Pipeline Overview
 
 ### build_wof_clips.py
 Used build all the rgb and warped optical flow jpeg files, in a specified directory structure. This program calls Temporal Segment Networks (TSN) code, and it assumes the command below is being run from the main TSN directory. Code is written to run on a GPU compute server.
@@ -21,7 +21,7 @@ Loads the "features" table, given csv files with features from steps 1 and 2.
 
 Computes similarity values for the similarity between a given reference clip and all other clips. All of the code in this repository is a work in progress, but this file in particular is currently being coded.
 
-### Detailed command line instructions
+## Detailed command line instructions
 1.    python tools/build_wof_clips.py  SRC_FOLDER  OUT_FOLDER    num_worker  NUM_WORKER    new_width 340 --new_height 256 2>local/errors.log
          *	SRC_FOLDER (e.g. UCF-101_test/) is the folder with the videos
          *	OUT_FOLDER (e.g. UCF-101_test_warp_frames/) is the output folder that will be populated with the frames and warped optical flow images.  There is a subdirectory for each video, holding the jpg frames and optical flow images for that video.
