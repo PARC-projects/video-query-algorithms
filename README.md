@@ -13,6 +13,7 @@ For detailed instruction on how to run and utilize this project, please have a l
 
 - [Home](https://github.com/fetorres/video-query-algorithms/wiki/Home)
 - [Pipeline Overview](https://github.com/fetorres/video-query-algorithms/wiki/Pipeline)
+- [Database](https://github.com/fetorres/video-query-algorithms/wiki/Database)
 - [Command Line Instructions](https://github.com/fetorres/video-query-algorithms/wiki/Command-Line)
 - [Broker](https://github.com/fetorres/video-query-algorithms/wiki/Broker)
 
