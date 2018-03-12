@@ -11,19 +11,22 @@ import sys
 from datetime import datetime
 import logging
 
-sys.path.insert(0,os.path.join(os.getcwd(), os.pardir,  'models'))
+sys.path.insert(0, os.path.join(os.getcwd(), os.pardir, 'models'))
 import compute_matches
 
 LOOP_EXECUTION_TIME = 10.0  # In seconds
 LOG_NAME = 'logs/query_broker_{0}.log'.format(
     datetime.now().strftime("%Y_%m_%d"))
+FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 
 logging.basicConfig(
-    format=
-    '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s',
+    format=FORMAT
     level=logging.DEBUG,
-    handlers=[logging.FileHandler(LOG_NAME),
-              logging.StreamHandler()])
+    handlers=[l
+        logging.FileHandler(LOG_NAME),
+        logging.StreamHandler()
+    ]
+)
 
 
 def main():
