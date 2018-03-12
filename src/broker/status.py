@@ -24,12 +24,12 @@ class QueryStatus():
 
     def _getStatusComputeSimilarity(self):
         response = self._makeRequest(
-            self.BASE_URL + "query-state/compute-similarity")
+            self.BASE_URL + "query-state/compute-revised")
         return response
 
     def _getStatusNewComputeSimilarity(self):
         response = self._makeRequest(
-            self.BASE_URL + "query-state/new-compute-similarity")
+            self.BASE_URL + "query-state/compute-new")
         return response
 
     def _makeRequest(self, url):
