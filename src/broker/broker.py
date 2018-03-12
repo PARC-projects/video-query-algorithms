@@ -20,9 +20,9 @@ LOG_NAME = 'logs/query_broker_{0}.log'.format(
 FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 
 logging.basicConfig(
-    format=FORMAT
+    format=FORMAT,
     level=logging.DEBUG,
-    handlers=[l
+    handlers=[
         logging.FileHandler(LOG_NAME),
         logging.StreamHandler()
     ]
