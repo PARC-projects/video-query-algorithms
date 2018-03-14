@@ -2,29 +2,50 @@
 Public API to algorithms logic chain
 """
 
-def new_matches(ref_clip_id, search_set='all', streams=('rgb', 'warped_optical_flow'),
-                        feature_name='global_pool', clip_duration=10):
-    """
-        Conditions:
-            :param ref_clip_id: primary key for reference clip in video_clips table.
-            :return: match_indicator: {<video_clip_id>: <True or False>}  for all video clips in search set
-    """
-    print(ref_clip_id)
 
-    # TODO: Fedrate logic down to compute_similarities.py
+def new_matches(new_query_state,
+                search_set='all',
+                streams=('rgb', 'warped_optical_flow'),
+                feature_name='global_pool',
+                clip_duration=10):
+    """
+    Public contract to compute matches of a new query.
+
+    Args:
+        new_query_state:
+            {
+                "query_id": query["id"],
+                "video_id": query["video"],
+                "reference_time": query["reference_time"]
+            }
+    """
+    print(new_query_state["query_id"])
+
+    # TODO: Frank - Fedrate logic down to compute_similarities.py
 
     return
 
-def revised_matches(ref_clip_id, user_matches, search_set='all', streams=('rgb', 'warped_optical_flow'),
-                        feature_name='global_pool', clip_duration=10):
-    """
-        Conditions:
-            :param ref_clip_id: primary key for reference clip in video_clips table.
-            :param user_matches: {<video clip id>: <0 or 1 to indicate whether user says it is a match>}
-            :return: match_indicator: {<video_clip_id>: <True or False>} for all video clips in search set
-    """
-    print(ref_clip_id)
 
-    # TODO: Fedrate logic down to compute_similarities.py
+def revised_matches(revised_query_state,
+                    search_set='all',
+                    streams=('rgb', 'warped_optical_flow'),
+                    feature_name='global_pool',
+                    clip_duration=10):
+    """
+    Public contract to compute matches of a revised query.
+
+    Args:
+        revised_query_state:
+            {
+                "query_id": query["id"],
+                "video_id": query["video"],
+                "reference_time": query["reference_time"],
+                "result": result (https://github.com/fetorres/video-query-api/blob/master/src/queries/models/query_result.py),
+                "matches": matches (https://github.com/fetorres/video-query-api/blob/master/src/queries/models/match.py)
+            }
+    """
+    print(revised_query_state["query_id"])
+
+    # TODO: Frank - Fedrate logic down to compute_similarities.py
 
     return
