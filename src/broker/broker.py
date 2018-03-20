@@ -22,20 +22,18 @@ FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 logging.basicConfig(
     format=FORMAT,
     level=logging.DEBUG,
-    handlers=[
-        logging.FileHandler(LOG_NAME),
-        logging.StreamHandler()
-    ]
-)
+    handlers=[logging.FileHandler(LOG_NAME),
+              logging.StreamHandler()])
 
 
 def main():
     '''Execute long pooling loop'''
-    processing = True
+    processing = False
     try:
         queryStatus = status.QueryStatus()
         threading.Timer(LOOP_EXECUTION_TIME, main).start()
         if not processing:
+            processing = True
             result = queryStatus.getStatus()
             compute_matches.new_matches(result["compute_new_matches"])
             compute_matches.revised_matches(result["compute_similarity"], [])
@@ -44,7 +42,6 @@ def main():
         logging.error(e)
     finally:
         processing = False
-
 
 
 if __name__ == '__main__':
