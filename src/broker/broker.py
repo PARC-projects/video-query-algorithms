@@ -35,8 +35,11 @@ def main():
         if not processing:
             processing = True
             result = queryStatus.getStatus()
-            compute_matches.new_matches(result["compute_new_matches"])
-            compute_matches.revised_matches(result["compute_similarity"], [])
+
+            if result["new"]:
+                compute_matches.new_matches(result["new"])
+            if result["revise"]:
+                compute_matches.revised_matches(result["revise"], [])
             processing = False
     except Exception as e:
         logging.error(e)

@@ -16,9 +16,10 @@ class QueryStatus():
         """
         try:
             self._authenticate()
-            revision = self._getStatusComputeSimilarity()
-            new = self._getStatusNewComputeSimilarity()
-            return {'compute_similarity': revision, 'compute_new_matches': new}
+            return {
+                'revision': self._getStatusComputeSimilarity(),
+                'new': self._getStatusNewComputeSimilarity()
+            }
         except Exception as e:
             logging.error(e)
 
@@ -40,7 +41,7 @@ class QueryStatus():
             return {}
 
     def _authenticate(self):
-        """Request a token and set store for future use
+        """Request a token and store for future use
         """
         # Make request
         response = requests.post(
