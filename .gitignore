@@ -1,6 +1,5 @@
 # Project specific
 src/daemon/query-broker/logs
-/.vscode
 /.idea
 
 # Byte-compiled / optimized / DLL files
