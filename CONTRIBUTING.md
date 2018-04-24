@@ -3,19 +3,19 @@
 #### **Did you find a bug?**
 
 * **Ensure the bug was not already reported** by searching on GitHub under
-[Issues](https://github.com/fetorres/video-query-algorithms/issues).
+[Issues](https://github.com/PARC-projects/video-query-algorithms/issues).
 * If you're unable to find an open issue addressing the problem,
-[open a new one](https://github.com/fetorres/video-query-algorithms/issues).
+[open a new one](https://github.com/PARC-projects/video-query-algorithms/issues).
 Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample**
 demonstrating the expected behavior that is not occurring.
 
 #### **Do you have questions about the source code?**
 
-* Ask any question about how to use Video Query Algorithms in the [Issues](https://github.com/fetorres/video-query-algorithms/issues).
+* Ask any question about how to use Video Query Algorithms in the [Issues](https://github.com/PARC-projects/video-query-algorithms/issues).
 
 #### **Do you intend to add a new feature or change an existing one?**
 
-* Suggest your change as an [Issue](https://github.com/fetorres/video-query-algorithms/issues).
+* Suggest your change as an [Issue](https://github.com/PARC-projects/video-query-algorithms/issues).
 * It is best you don't start any development until the change has been reviewed by the team and approved first.
 
 #### **Did you write a patch that fixes a bug?**
@@ -25,8 +25,8 @@ demonstrating the expected behavior that is not occurring.
 
 #### **Are you ready to submit a PR?**
 
-Please send a [GitHub Pull Request](https://github.com/fetorres/video-query-algorithms/compare?expand=1) with a clear list of
-what you've done (read more about [pull requests](http://help.github.com/pull-requests/)).
+Please send a [GitHub Pull Request](https://github.com/PARC-projects/video-query-algorithms/compare?expand=1) with a clear list of
+what you've done (read more about [pull requests](https://help.github.com/articles/about-pull-requests/)).
 Please make sure all of your commits are atomic (one feature per commit).
 
 Always write a clear log message for your commits. One-line messages are fine for small changes, but bigger changes
