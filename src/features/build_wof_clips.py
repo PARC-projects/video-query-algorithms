@@ -55,7 +55,7 @@ def run_warp_optical_flow(vid_item, dev_id=0):
         pass
 
     current = current_process()
-    dev_id = (int(current._identity[0]) - 1) % NUM_GPU + START_GPU 
+    dev_id = (int(current._identity[0]) - 1) % NUM_GPU + START_GPU
     flow_x_path = '{}/flow_x'.format(out_full_path)
     flow_y_path = '{}/flow_y'.format(out_full_path)
 
@@ -118,22 +118,24 @@ def createClip(vid_path, out_path, frames_per_clip=150, frames_per_second=15):
 if __name__ == '__main__':
     flow_type = "warp_tvl1"
 
-    parser = argparse.ArgumentParser(description="extract rgb and warped optical flow frames")
+    parser = argparse.ArgumentParser(description="Extract rgb and warped optical flow frames")
     parser.add_argument("src_dir",
                         help="directory with video files")
     parser.add_argument("out_dir")
-    parser.add_argument("--fps", type=int, default=15, help="frames per second")
-    parser.add_argument("--clip_time", type=int, default=10, help="clip time in seconds")
-    parser.add_argument("--num_worker", type=int, default=16)
+    parser.add_argument("--fps", type=int, default=15, help="frames per second, default = 15")
+    parser.add_argument("--clip_time", type=int, default=10, help="clip time in seconds, default = 10")
+    parser.add_argument("--num_worker", type=int, default=16, help="CPU workers, default=16")
     #parser.add_argument("--flow_type", type=str, default='tvl1', choices=['tvl1', 'warp_tvl1'])
-    parser.add_argument("--df_path", type=str, default='./lib/dense_flow/', help='path to the dense_flow toolbox')
+    parser.add_argument("--df_path", type=str, default='./lib/dense_flow/', help='path to the dense_flow toolbox, '
+                                                                                 'default = ./lib/dense_flow/')
     parser.add_argument("--out_format", type=str, default='dir', choices=['dir','zip'],
-                        help='path to the dense_flow toolbox')
-    parser.add_argument("--ext", type=str, default='mp4', choices=['avi','mp4'], help='video file extensions')
+                        help='format of output, default=dir')
+    parser.add_argument("--ext", type=str, default='mp4', choices=['avi','mp4'], help='video file extensions, '
+                                                                                      'default = mp4')
     parser.add_argument("--new_width", type=int, default=0, help='resize image width')
     parser.add_argument("--new_height", type=int, default=0, help='resize image height')
-    parser.add_argument("--num_gpu", type=int, default=8, help='number of GPU')
-    parser.add_argument("--starting_gpu", type=int, default=0, help='ID of first GPU to use')
+    parser.add_argument("--num_gpu", type=int, default=8, help='number of GPU, default = 8')
+    parser.add_argument("--starting_gpu", type=int, default=0, help='ID of first GPU to use, default = 0')
 
 # initialization
     args = parser.parse_args()
