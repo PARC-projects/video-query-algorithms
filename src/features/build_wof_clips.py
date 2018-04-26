@@ -95,16 +95,16 @@ def createClip(vid_path, out_path, frames_per_clip=150, frames_per_second=15):
     rgbFrames_remaining = glob.glob(os.path.join(out_path, vid_name, 'img*.jpg'))
     nFrames_remaining = len(rgbFrames_remaining)
     if nFrames_remaining >= 2*frames_per_second:
-        frames = list(range(nclips * frames_per_clip + 1,
-                            nclips * frames_per_clip + nFrames_remaining+1))
         nClipDir = os.path.join(out_video_path, 'clip_{:04d}'.format(nclips+1))
         os.mkdir(nClipDir)
 
-        for iframe in frames:
-            rgbFile = os.path.join(out_video_path, 'img_{:05d}.jpg'.format(iframe))
-            flowxFile = os.path.join(out_video_path, 'flow_x_{:05d}.jpg'.format(iframe))
-            flowyFile = os.path.join(out_video_path, 'flow_y_{:05d}.jpg'.format(iframe))
-
+    frames = list(range(nclips * frames_per_clip + 1,
+                        nclips * frames_per_clip + nFrames_remaining + 1))
+    for iframe in frames:
+        rgbFile = os.path.join(out_video_path, 'img_{:05d}.jpg'.format(iframe))
+        flowxFile = os.path.join(out_video_path, 'flow_x_{:05d}.jpg'.format(iframe))
+        flowyFile = os.path.join(out_video_path, 'flow_y_{:05d}.jpg'.format(iframe))
+        if nFrames_remaining >= 2*frames_per_second:
             newFrame = iframe - nclips * frames_per_clip
             rgbDestFile = os.path.join(nClipDir, 'img_{:05d}.jpg'.format(newFrame))
             flowxDestFile = os.path.join(nClipDir, 'flow_x_{:05d}.jpg'.format(newFrame))
@@ -112,6 +112,10 @@ def createClip(vid_path, out_path, frames_per_clip=150, frames_per_second=15):
             shutil.move(rgbFile, rgbDestFile)
             shutil.move(flowxFile, flowxDestFile)
             shutil.move(flowyFile, flowyDestFile)
+        else:
+            os.remove(rgbFile)
+            os.remove(flowxFile)
+            os.remove(flowyFile)
 
     return
 
