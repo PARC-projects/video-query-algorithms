@@ -24,7 +24,7 @@ def dump_frames(vid_item):
     vid_name = vid_path.split('/')[-1].split('.')[0]
     out_full_path = os.path.join(out_path, vid_name)
 
-    ret, frame = video.read()  # do not save the initial blank frame
+    ret, frame = video.read()  # skip the initial blank frame
     assert ret
     fcount = int(video.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)) - 1
     try:
@@ -67,7 +67,7 @@ def run_warp_optical_flow(vid_item, dev_id=0):
     sys.stdout.flush()
     return True
 
-def createClip(vid_path, out_path, frames_per_clip=150, frames_per_second=15):
+def create_clip(vid_path, out_path, frames_per_clip=150, frames_per_second=15):
     vid_name = vid_path.split('/')[-1].split('.')[0]
     rgbFrames = glob.glob(os.path.join(out_path, vid_name, 'img*.jpg'))
     nFrames = len(rgbFrames)
@@ -177,5 +177,5 @@ if __name__ == '__main__':
 
 # reorganize frames and warped optical flow images into clip directories
     for vid_path in vid_list:
-        createClip(vid_path, out_path, frames_per_clip=frames_per_clip,
+        create_clip(vid_path, out_path, frames_per_clip=frames_per_clip,
                    frames_per_second=args.fps)
