@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Preconditions:
+# Set TSN_ROOT environment variable to the root of the temporal segment netowrks code
+# Set TSN_ENVIRONMENT to the name of the conda environment used to run temporal segment netowrks code,
+#      or setup the virtual environment beforehand
 source activate $TSN_ENVIRON
 
 SRC_FOLDER=$1   # folder with rgb frames and warped optical flow images of clips, SRC_FOLDER/{video name}/{clip folders}/*.jpg
