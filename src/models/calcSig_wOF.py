@@ -10,26 +10,21 @@ The option --num_frame_per_video can be used to change this parameter.
 
 import sys
 import os
+#  specify the directory for the temporal segment networks code
+# set the environment variable TSN_ROOT, e.g. = '/data/torres/temporal-segment-networks/'
+sys.path.insert(0, "$TSN_ROOT")
+sys.path.insert(1, os.path.join("$TSN_ROOT", 'lib/caffe-action/python'))
+
 import argparse
 import glob
-import math
-import csv
 import cv2
 import numpy as np
 import multiprocessing
-from sklearn.metrics import confusion_matrix
 import errno
 # CaffeNet objects contain learned caffe nets and functions for scoring frames
 from pyActionRecog.action_caffe import CaffeNet
 from pyActionRecog import parse_directory  # for parsing directories holding frames
 #  output is (dir_dict, rgb_counts, flow_counts) where the counts are frame counts
-from pyActionRecog import parse_split_file   # parse the data splits for ucf-101 or hmdb51
-
-#  specify the directory for the temporal segment networks code
-TSN_root = '/data/torres/temporal-segment-networks/'
-os.chdir(TSN_root)
-sys.path.insert(1, os.path.join(TSN_root, 'lib/caffe-action/python'))
-sys.path.insert(0, '.')   # is this really necessary??
 
 
 def make_sure_path_exists(path):
@@ -148,9 +143,9 @@ def writeFeatures(clip_list, video_path):
 #           --num_worker 24 --outFeatures_dir testVideo_features/ --modelname UCF101_model
 #
 # Note:  num_worker is the number of processes, each of which starts with a CPU and then grabs
-#        gpu resources.  num_worker can be larger than the number of available GPUs, but in 
+#        gpu resources.  num_worker can be larger than the number of available GPUs, but in
 #        that case, the --gpus option must explicitly say what GPU numbers are available.
-#        Otherwise, the program will increment the gpu number, rather than load up multiple jobs 
+#        Otherwise, the program will increment the gpu number, rather than load up multiple jobs
 #        on a GPU.
 #
 parser = argparse.ArgumentParser()
