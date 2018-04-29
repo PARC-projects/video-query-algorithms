@@ -10,8 +10,8 @@ The option --num_frame_per_video can be used to change this parameter.
 
 import sys
 import os
-#  specify the directory for the temporal segment networks code
-# set the environment variable TSN_ROOT, e.g. = '/data/torres/temporal-segment-networks/'
+# specify the directory for the temporal segment networks code by
+# setting the environment variable TSN_ROOT, e.g. = '/data/torres/temporal-segment-networks/'
 sys.path.insert(0, "$TSN_ROOT")
 sys.path.insert(1, os.path.join("$TSN_ROOT", 'lib/caffe-action/python'))
 

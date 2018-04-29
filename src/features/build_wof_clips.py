@@ -6,12 +6,14 @@
 # subdirectories below that for each clip, with the frames and optical flow images in
 # the lowest level subdirectories.
 
+import sys
+# specify the directory for the temporal segment networks code by
+# setting the environment variable TSN_ROOT, e.g. = '/data/torres/temporal-segment-networks/'
+sys.path.insert(0, "$TSN_ROOT")
 import os
 import glob
-import sys
 import shutil
 import cv2
-from pipes import quote
 from multiprocessing import Pool, current_process
 import argparse
 out_path = ''
