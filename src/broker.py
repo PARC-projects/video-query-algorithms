@@ -5,14 +5,10 @@ This script is designed to be executed as a long running service.
 TODO: Consider shifting to a daemonize approach to manage this process.
 """
 import threading
-import status
-import os
-import sys
+from api.status import QueryStatus
 from datetime import datetime
 import logging
-
-sys.path.insert(0, os.path.join(os.getcwd(), os.pardir, 'models'))
-import compute_matches
+from models import compute_matches
 
 LOOP_EXECUTION_TIME = 10.0  # In seconds
 LOG_NAME = 'logs/query_broker_{0}.log'.format(
@@ -28,23 +24,19 @@ logging.basicConfig(
 
 def main():
     '''Execute long pooling loop'''
-    processing = False
-    try:
-        queryStatus = status.QueryStatus()
-        threading.Timer(LOOP_EXECUTION_TIME, main).start()
-        if not processing:
-            processing = True
-            result = queryStatus.getStatus()
+    queryStatus = QueryStatus()
 
-            if result["new"]:
-                compute_matches.new_matches(result["new"])
-            if result["revise"]:
-                compute_matches.revised_matches(result["revise"], [])
-            processing = False
+    try:
+        result = queryStatus.getStatus()
+        if result["new"]:
+            compute_matches.new_matches(result["new"])
+        if result["revise"]:
+            compute_matches.revised_matches(result["revise"], [])
     except Exception as e:
         logging.error(e)
     finally:
-        processing = False
+        # create a new thread
+        threading.Timer(LOOP_EXECUTION_TIME, main).start()
 
 
 if __name__ == '__main__':
