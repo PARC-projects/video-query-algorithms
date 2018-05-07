@@ -35,7 +35,7 @@ class QueryStatus():
 
     def _makeRequest(self, url):
         response = requests.get(url, headers=self.headers)
-        if response.status_code == requests.codes.ok:
+        if response.status_code == requests.codes['ok]:
             return response.json()
         else:
             return {}
