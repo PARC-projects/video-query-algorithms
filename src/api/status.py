@@ -7,7 +7,7 @@ import os
 
 
 class QueryStatus():
-    BASE_URL = "http://127.0.0.1:8000/"
+    API_URL = "http://127.0.0.1:8000/"
     logger = logging.getLogger(__name__)
     headers = {}
 
@@ -25,12 +25,12 @@ class QueryStatus():
 
     def _getStatusComputeSimilarity(self):
         response = self._makeRequest(
-            self.BASE_URL + "query-state/compute-revised")
+            self.API_URL + "query-state/compute-revised")
         return response
 
     def _getStatusNewComputeSimilarity(self):
         response = self._makeRequest(
-            self.BASE_URL + "query-state/compute-new")
+            self.API_URL + "query-state/compute-new")
         return response
 
     def _makeRequest(self, url):
@@ -45,7 +45,7 @@ class QueryStatus():
         """
         # Make request
         response = requests.post(
-            self.BASE_URL + 'api-token-auth/',
+            self.API_URL + 'api-token-auth/',
             data={
                 'username': os.environ['API_CLIENT_USERNAME'],
                 'password': os.environ['API_CLIENT_PASSWORD']
