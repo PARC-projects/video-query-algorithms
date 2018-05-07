@@ -12,5 +12,5 @@ def authenticate(BASE_URL="http://127.0.0.1:8000/"):
             'password': os.environ['API_CLIENT_PASSWORD']
         })
 
-    # Set header
+    # TODO: Consider bubbling up meaningful loggin message on != 200
     return 'Token {}'.format(response.json()['token'])

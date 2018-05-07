@@ -31,9 +31,9 @@ def main():
     try:
         result = queryStatus.getStatus()
         if result["new"]:
-            compute_matches.new_matches(result["new"])
-        if result["revise"]:
-            compute_matches.revised_matches(result["revise"], [])
+            compute_matches.new_matches(result["new"] or {})
+        if result["revision"]:
+            compute_matches.revised_matches(result["revision"] or {}, [])
     except Exception as e:
         logging.error(e)
     finally:
@@ -47,13 +47,13 @@ def main():
         #   - Simple and traceable.
         #   - Would we want to throttle the synchronous process?
         #       - If not, there would be no value in setting a sleep to throttle.
+        #       - It does help when debugging.
 
         # TODO: Is BROKER_IS_THREADED a good name?
         if os.environ.get('BROKER_IS_THREADED') == 'True':
-            # create a new thread
             threading.Timer(LOOP_EXECUTION_TIME, main).start()
         else:
-            # time.sleep(LOOP_EXECUTION_TIME)
+            time.sleep(LOOP_EXECUTION_TIME)
             main()
 
 

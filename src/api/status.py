@@ -2,7 +2,7 @@
 """
 import requests
 import logging
-from authenticate import authenticate
+from api.authenticate import authenticate
 
 class QueryStatus():
     API_URL = "http://127.0.0.1:8000/" # TODO: Get from env
