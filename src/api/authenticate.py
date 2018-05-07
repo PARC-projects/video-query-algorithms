@@ -1,7 +1,7 @@
 import requests
 import os
 
-def _authenticate(BASE_URL="http://127.0.0.1:8000/"):
+def authenticate(BASE_URL="http://127.0.0.1:8000/"):
     """Request a token and store for future use
     """
     # Make request

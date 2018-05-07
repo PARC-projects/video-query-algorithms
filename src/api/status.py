@@ -2,12 +2,10 @@
 """
 import requests
 import logging
-import json
-import os
-
+from authenticate import authenticate
 
 class QueryStatus():
-    API_URL = "http://127.0.0.1:8000/"
+    API_URL = "http://127.0.0.1:8000/" # TODO: Get from env
     logger = logging.getLogger(__name__)
     headers = {}
 
@@ -15,7 +13,8 @@ class QueryStatus():
         """Request queries that meet processing_state requirements
         """
         try:
-            self._authenticate()
+            # Get and set authentication headers
+            self.headers['Authorization'] = authenticate(self.API_URL)
             return {
                 'revision': self._getStatusComputeSimilarity(),
                 'new': self._getStatusNewComputeSimilarity()
@@ -35,22 +34,7 @@ class QueryStatus():
 
     def _makeRequest(self, url):
         response = requests.get(url, headers=self.headers)
-        if response.status_code == requests.codes['ok]:
+        if response.status_code == requests.codes['ok']:
             return response.json()
         else:
             return {}
-
-    def _authenticate(self):
-        """Request a token and store for future use
-        """
-        # Make request
-        response = requests.post(
-            self.API_URL + 'api-token-auth/',
-            data={
-                'username': os.environ['API_CLIENT_USERNAME'],
-                'password': os.environ['API_CLIENT_PASSWORD']
-            })
-
-        # Set header
-        self.headers['Authorization'] = "Token {}".format(
-            response.json()['token'])
