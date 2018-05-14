@@ -1,3 +1,51 @@
+"""
+Loads features created by calcSig_wof into the video-queries-api database.
+The features are in csv files in a directory tree specified by calcSig_wOF.py.
+"""
+import threading
+from api.api_repository import APIRepository
+from datetime import datetime
+import logging
+from models import compute_matches
+import api.authenticate
+
+def create_video():
+
+def create_video_clip():
+
+def create_feature():
+
+
+def main(x):
+    print(x)
+    assert 1==0
+    # Execute long pooling loop
+    query_updates = APIRepository()
+    query_updates.get_features()
+    try:
+        result = query_updates.get_status()
+        if result["new"]:
+            compute_matches.new_matches(result["new"])
+        if result["revise"]:
+            compute_matches.revised_matches(result["revise"], [])
+    except Exception as e:
+        logging.error(e)
+    finally:
+        # create a new thread
+        threading.Timer(LOOP_EXECUTION_TIME, main).start()
+
+
+if __name__ == '__main__':
+    main(x)
+
+
+
+
+
+
+
+
+
 import psycopg2
 import os
 import csv
