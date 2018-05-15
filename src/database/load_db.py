@@ -2,18 +2,15 @@
 Loads features created by calcSig_wof into the video-queries-api database.
 The features are in csv files in a directory tree specified by calcSig_wOF.py.
 """
-import threading
-from datetime import datetime
-import logging
-# from models import compute_matches
 from api.authenticate import authenticate
 import coreapi
 import os
+import argparse
+import csv
 
-def create_video(video_name, video_path):
+
+def create_video(video_name, video_path, auth):
     # Initialize a client & load the schema document
-    base_url = "http://127.0.0.1:8000/docs/"
-    auth = authenticate(base_url)
     client = coreapi.Client(auth=auth)
     schema = client.get("http://127.0.0.1:8000/docs/")
 
@@ -23,109 +20,78 @@ def create_video(video_name, video_path):
         "name": video_name,
         "path": video_path,
     }
+    video_object = client.action(schema, action, params=params)
+
+    with os.scandir(video_path) as split_dir:
+        for split in split_dir:
+            if split.is_dir() and not split.name.startswith('.'):
+                create_video_clips_and_features(split.path, video_object, client, schema)
+
+
+def create_video_clips_and_features(split_path, video_dict, client, schema):
+    for csv_file in os.scandir(split_path):
+        nsplit = int(split_path[-1])
+        if csv_file.is_file() and csv_file.name.endswith('.csv') and not csv_file.name.startswith('.'):
+            with open(csv_file.path, 'r') as f:
+                reader = csv.reader(f)
+                header = next(reader)
+                video_name = header[0].split('=')[-1]
+                assert video_name == video_dict["name"]
+                video_uri = header[1].split('=')[-1]
+                dnn_stream = header[2].split('=')[-1]
+                feature_name = header[3].split('=')[-1]
+                dnn_weights_file_uri = header[4].split('=')[-1]
+                duration = 10
+                # TODO: allow for clip_duration values other than the default 10 sec
+                for row in reader:
+                    clip = row[0]
+                    feature_vector = [float(x) for x in row[1:]]
+                    clip_id = _create_clip(clip, duration, video_uri, video_dict["id"], client, schema)
+                    _create_feature(feature_vector, nsplit, feature_name, dnn_weights_file_uri, clip_id, dnn_stream,
+                                    client, schema)
+
+
+def _create_clip(clip, duration, video_uri, video_id, client, schema):
+    # TODO: add some reasonable code to display a meaningful error if a clip already exists
+
+    action = ["video-clips", "create"]
+    params = {
+        "clip": clip,
+        "duration": duration,
+        "debug_video_uri": video_uri,
+        "video": video_id,
+    }
     result = client.action(schema, action, params=params)
-
-def create_video_clip():
-    pass
-
-def create_feature():
-    pass
+    return result["id"]
 
 
-def main():
-    video_name = "test"
-    video_path = "/test/test/"
-    create_video(video_name, video_path)
+def _create_feature(feature_vector, split, feature_name, dnn_weights_file_uri, clip_id, dnn_stream, client, schema):
+    # TODO: add some reasonable code to display a meaningful error if a feature already exists
+    action = ["features", "create"]
+    params = {
+        "dnn_stream_split": split,
+        "name": feature_name,
+        "dnn_weights_uri": dnn_weights_file_uri,
+        "feature_vector": feature_vector,
+        "video_clip": clip_id,
+        "dnn_stream": dnn_stream,
+    }
+    client.action(schema, action, params=params)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Load video clip features into Video-Query database")
+    parser.add_argument("src_dir", help="directory with video files")
+    parser.add_argument("--duration", type=int, default=10, help="clip duration, s, integer only")
+    args = parser.parse_args()
 
+    # get authentication header
+    auth_coreapi = authenticate()
 
-
-
-
-
-
-
-'''
-import psycopg2
-import os
-import csv
-
-parent_dir = '/Volumes/torres/TSN/SHRP2Videos/SHRP2_Forward_clips_features/'  # mounted tilde drive on Mac
-# database connection
-conn = psycopg2.connect("host=localhost dbname=video-query user=torres")  # creates Connection object
-cur = conn.cursor()   # creates Cursor object for issuing commands
-
-# iterate through video clips
-error_expression = 'video directory name {} and video name {} in file do not match'
-for video in os.scandir(parent_dir):
-    if video.is_dir() and not video.name.startswith('.'):
-        video_path = os.path.join(parent_dir, video.name)
-        for split in os.scandir(video_path):
-            if split.is_dir() and not split.name.startswith('.'):
-                split_path = os.path.join(video_path, split.name)
-                for csv_file in os.scandir(split_path):
-                    if csv_file.is_file() and csv_file.name.endswith('.csv') \
-                            and not csv_file.name.startswith('.'):
-
-                        feature_file = os.path.join(split_path, csv_file.name)
-                        with open(feature_file, 'r') as f:
-                            reader = csv.reader(f)
-                            header = next(reader)
-                            video_name = header[0].split('=')[-1]
-                            video_uri = header[1].split('=')[-1]
-                            cnn_stream = header[2].split('=')[-1]
-                            cnn_stream_split = split.name[-1]
-                            feature_name = header[3].split('=')[-1]
-                            cnn_weights_file_uri = header[4].split('=')[-1]
-                            clip_duration = 10
-                            for row in reader:
-                                clip = row[0]
-                                feature_vector = [float(x) for x in row[1:]]
-                                # add video name to video table if it is not already there
-                                cur.execute(
-                                    "INSERT INTO video (name) "
-                                    "SELECT (%s) "
-                                    "WHERE NOT EXISTS ("
-                                        "SELECT id FROM video "
-                                        "WHERE name = %s"
-                                        ");",
-                                    [video_name, video_name]
-                                )
-                                # get primary key id for this video
-                                cur.execute(
-                                    "SELECT id FROM video "
-                                    "WHERE name = %s;",
-                                    [video_name]
-                                )
-                                video_id = cur.fetchone()
-                                # create entry in video_clips table for this clip, unless it already exists
-                                cur.execute(
-                                    "INSERT INTO video_clips (video_id, clip, duration, debug_video_uri) "
-                                    "VALUES (%s, %s, %s, %s) "
-                                    "ON CONFLICT ON CONSTRAINT no_duplicate_clips DO NOTHING;",
-                                    [video_id, clip, clip_duration, video_uri]
-                                )
-                                conn.commit()
-                                cur.execute(
-                                    "SELECT id FROM video_clips "
-                                    "WHERE video_id = %s AND clip = %s AND duration = %s;",
-                                    [video_id, clip, clip_duration]
-                                )
-                                clip_id = cur.fetchone()
-                                # create row in features table
-                                cur.execute(
-                                    "INSERT INTO features (video_clip, dnn_stream, dnn_stream_split, "
-                                    "dnn_weights_uri, name, feature_vector) "
-                                    "VALUES (%s, %s, %s, %s, %s, %s);",
-                                    [clip_id, cnn_stream, cnn_stream_split,
-                                     cnn_weights_file_uri, feature_name, feature_vector]
-                                )
-                                conn.commit()
-    conn.commit()  # commit to database
-# Close communication with database
-cur.close()
-conn.close()
-'''
+    # iterate through video clips
+    src_path = args.src_dir
+    error_expression = 'video directory name {} and video name {} in file do not match'
+    with os.scandir(src_path) as vid:
+        for video in vid:
+            if video.is_dir() and not video.name.startswith('.'):
+                create_video(video.name, video.path, auth_coreapi)

@@ -5,13 +5,13 @@ import requests
 from models.compute_similarities import compute_similarities, optimize_weights, select_matches
 
 
-def compute_matches(query_update, api_url, default_weights={'rgb': 1.0, 'warped_optical_flow': 1.5},
+def compute_matches(query_update, api_url, default_weights=('rgb': 1.0, 'warped_optical_flow': 1.5),
                     default_threshold=0.8, streams=('rgb', 'warped optical flow')):
     """
     Public contract to compute new matches and scores for a query.
     query_update is an instance of APIRepository
 
-        query_to_update json response:
+        query_to_update json object:
             {
                 "query_id": query["id"],
                 "video_id": query["video"],
@@ -67,13 +67,16 @@ def compute_matches(query_update, api_url, default_weights={'rgb': 1.0, 'warped_
     # Change process_state to 4: Processed
     # For any 'new' and 'revise' queries that were updated
     # TODO: Add email notification to user
-    change_process_state(query_update, updates, 4)
+    change_process_state(updates, 4, client, schema)
+
 
 def change_process_state(updates, process_state, client, schema):
     for update_type, query_to_update in updates.items():
         action = ["queries", "partial_update"]
         params = {"id": query_to_update["query_id"], "process_state": process_state}
         response = client.action(schema, action, params=params)
-        # error response:
+
         if response.status_code != requests.codes.ok:
-            return response.json()
+            return "Update of process_state to " + process_state + \
+                   " for query " + query_to_update["query_id"] + " failed!"
+        return response.json()["id"]
