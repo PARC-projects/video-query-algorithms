@@ -18,6 +18,7 @@ import os
 # explicitly set path to find caffe_action instead of another caffe version
 sys.path.insert(0, "$TSN_ROOT")
 sys.path.insert(1, os.path.join("$TSN_ROOT", 'lib/caffe-action/python'))
+sys.path.insert(2, os.path.join("$TSN_ROOT", 'pyActionRecog'))   # not sure this is needed
 
 import argparse
 import glob
