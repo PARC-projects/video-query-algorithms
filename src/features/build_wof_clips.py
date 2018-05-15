@@ -31,20 +31,23 @@ def dump_frames(vid_item):
 
     ret, frame = video.read()  # skip the initial blank frame
     assert ret
-    fcount = int(video.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)) - 1
+    # fcount = int(video.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)) - 1
     try:
         os.mkdir(out_full_path)
     except OSError:
         pass
     file_list = []
-    for i in xrange(fcount):
+    icount = 1
+    while (True):
         ret, frame = video.read()
-        assert ret
+        if not ret:     # break when there are no more frames
+            break
         if new_size != (0,0):
             frame = cv2.resize(frame, new_size)
-        cv2.imwrite('{}/img_{:05d}.jpg'.format(out_full_path, i+1), frame)
-        access_path = '{}/{:05d}.jpg'.format(vid_name, i+1)
+        cv2.imwrite('{}/img_{:05d}.jpg'.format(out_full_path, icount), frame)
+        access_path = '{}/{:05d}.jpg'.format(vid_name, icount)
         file_list.append(access_path)
+        icount += 1
     print 'rgb for {} {} done'.format(vid_id, vid_name)
     sys.stdout.flush()
     return file_list
