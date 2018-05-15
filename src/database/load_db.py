@@ -3,40 +3,43 @@ Loads features created by calcSig_wof into the video-queries-api database.
 The features are in csv files in a directory tree specified by calcSig_wOF.py.
 """
 import threading
-from api.api_repository import APIRepository
 from datetime import datetime
 import logging
-from models import compute_matches
-import api.authenticate
+# from models import compute_matches
+from api.authenticate import authenticate
+import coreapi
+import os
 
-def create_video():
+def create_video(video_name, video_path):
+    # Initialize a client & load the schema document
+    base_url = "http://127.0.0.1:8000/docs/"
+    auth = authenticate(base_url)
+    client = coreapi.Client(auth=auth)
+    schema = client.get("http://127.0.0.1:8000/docs/")
+
+    # Interact with the API endpoint
+    action = ["videos", "create"]
+    params = {
+        "name": video_name,
+        "path": video_path,
+    }
+    result = client.action(schema, action, params=params)
 
 def create_video_clip():
+    pass
 
 def create_feature():
+    pass
 
 
-def main(x):
-    print(x)
-    assert 1==0
-    # Execute long pooling loop
-    query_updates = APIRepository()
-    query_updates.get_features()
-    try:
-        result = query_updates.get_status()
-        if result["new"]:
-            compute_matches.new_matches(result["new"])
-        if result["revise"]:
-            compute_matches.revised_matches(result["revise"], [])
-    except Exception as e:
-        logging.error(e)
-    finally:
-        # create a new thread
-        threading.Timer(LOOP_EXECUTION_TIME, main).start()
+def main():
+    video_name = "test"
+    video_path = "/test/test/"
+    create_video(video_name, video_path)
 
 
 if __name__ == '__main__':
-    main(x)
+    main()
 
 
 
@@ -45,7 +48,7 @@ if __name__ == '__main__':
 
 
 
-
+'''
 import psycopg2
 import os
 import csv
@@ -125,3 +128,4 @@ for video in os.scandir(parent_dir):
 # Close communication with database
 cur.close()
 conn.close()
+'''
