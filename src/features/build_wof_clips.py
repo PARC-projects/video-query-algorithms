@@ -1,10 +1,13 @@
 #__author__ = 'yjxiong'
+
 # 1/11/2018: Revised by Frank Torres to compute rgb and warped optical flow frames
 # for use in video query, and separate the jpg files into folders for each clip.
 # Default video type is changed from .avi to .mp4.
 # The end result is the directory out_dir with subdirectories for each video and
 # subdirectories below that for each clip, with the frames and optical flow images in
 # the lowest level subdirectories.
+#
+# Locate in tools/ subdirectory of temporal-segment-networks code
 
 import sys
 # specify the directory for the temporal segment networks code by
@@ -37,7 +40,7 @@ def dump_frames(vid_item):
     icount = 1
     while (True):
         ret, frame = video.read()
-        if not ret:
+        if not ret:     # break when there are no more frames
             break
         if new_size != (0,0):
             frame = cv2.resize(frame, new_size)
