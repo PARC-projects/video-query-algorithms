@@ -1,4 +1,7 @@
-""" calcSig_wOF.py computes video signatures comprising embedded features of the RGB and warped optical flow CNNs.
+"""
+This file should be in the tools/ subdirectory of a temporal-segment-networks directory.
+
+calcSig_wOF.py computes video signatures comprising embedded features of the RGB and warped optical flow CNNs.
 Here, the CNN's are networks (i.e. RGB or warped optical flow) trained using the Temporal Segment Networks
 (TSN) work by Wang et al. (https://github.com/yjxiong/temporal-segment-networks ).
 The default name for the feature blob (--featureBlob) is "global_pool", which is at the "fc-action"
@@ -12,6 +15,7 @@ import sys
 import os
 # specify the directory for the temporal segment networks code by
 # setting the environment variable TSN_ROOT, e.g. = '/data/torres/temporal-segment-networks/'
+# explicitly set path to find caffe_action instead of another caffe version
 sys.path.insert(0, "$TSN_ROOT")
 sys.path.insert(1, os.path.join("$TSN_ROOT", 'lib/caffe-action/python'))
 

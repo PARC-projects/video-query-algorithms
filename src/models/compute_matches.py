@@ -5,8 +5,7 @@ import requests
 from models.compute_similarities import compute_similarities, optimize_weights, select_matches
 
 
-def compute_matches(query_update, api_url, default_weights=('rgb': 1.0, 'warped_optical_flow': 1.5),
-                    default_threshold=0.8, streams=('rgb', 'warped optical flow')):
+def compute_matches(query_update, api_url, default_weights, default_threshold, streams):
     """
     Public contract to compute new matches and scores for a query.
     query_update is an instance of APIRepository
@@ -28,13 +27,11 @@ def compute_matches(query_update, api_url, default_weights=('rgb': 1.0, 'warped_
     client = query_update.client
     schema = query_update.schema
 
-
-    # Change process_state to 3: Processing
-    # For any 'new' and 'revise' queries to be updated
-    change_process_state(updates, 3, client, schema)
-
     # update queries (update type is "new" or "revise")
     for update_type, query_to_update in updates.items():
+
+        # Change process_state to 3: Processing
+        change_process_state(query_to_update["query_id"], 3, client, schema)
 
         similarities = compute_similarities(query_to_update, api_url, streams)
 
@@ -64,19 +61,16 @@ def compute_matches(query_update, api_url, default_weights=('rgb': 1.0, 'warped_
         for video_clip, score in matches:
             query_update.create_match(new_result_id, score, video_clip)
 
-    # Change process_state to 4: Processed
-    # For any 'new' and 'revise' queries that were updated
-    # TODO: Add email notification to user
-    change_process_state(updates, 4, client, schema)
+        # Change process_state to 4: Processed
+        # TODO: Add email notification to user
+        change_process_state(query_to_update["query_id"], 4, client, schema)
 
 
-def change_process_state(updates, process_state, client, schema):
-    for update_type, query_to_update in updates.items():
-        action = ["queries", "partial_update"]
-        params = {"id": query_to_update["query_id"], "process_state": process_state}
-        response = client.action(schema, action, params=params)
+def change_process_state(query_id, process_state, client, schema):
+    action = ["queries", "partial_update"]
+    params = {"id": query_id, "process_state": process_state}
+    response = client.action(schema, action, params=params)
 
-        if response.status_code != requests.codes.ok:
-            return "Update of process_state to " + process_state + \
-                   " for query " + query_to_update["query_id"] + " failed!"
-        return response.json()["id"]
+    if response.status_code != requests.codes.ok:
+        return "Update of process_state to " + process_state + " for query " + query_id + " failed!"
+    return

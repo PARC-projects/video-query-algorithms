@@ -17,6 +17,9 @@ LOG_NAME = 'logs/query_broker_{0}.log'.format(
     datetime.now().strftime("%Y_%m_%d"))
 FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 BASE_URL = "http://127.0.0.1:8000/"
+default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5}
+default_threshold = 0.8
+streams = ('rgb', 'warped optical flow')
 
 logging.basicConfig(
     format=FORMAT,
@@ -30,7 +33,7 @@ def main():
     try:
         # check for updates
         query_update = APIRepository(BASE_URL)
-        compute_matches(query_update, BASE_URL)
+        compute_matches(query_update, BASE_URL, default_weights, default_threshold, streams)
     except Exception as e:
         logging.error(e)
     finally:
