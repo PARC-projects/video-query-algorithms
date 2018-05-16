@@ -12,7 +12,7 @@ import logging
 from api.api_repository import APIRepository
 from models.compute_matches import compute_matches
 
-LOOP_EXECUTION_TIME = 10.0  # In seconds
+LOOP_EXECUTION_TIME = 1000.0  # In seconds
 LOG_NAME = 'logs/query_broker_{0}.log'.format(
     datetime.now().strftime("%Y_%m_%d"))
 FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
