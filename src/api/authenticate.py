@@ -12,11 +12,13 @@ def authenticate(api_url="http://127.0.0.1:8000/"):
             'password': os.environ['API_CLIENT_PASSWORD']
         })
 
-    # TODO: Consider bubbling up meaningful loggin message on != 200
+    if response.status_code != requests.codes.ok:
+        print("Authentication failed: ")
+        return
+
     # create a coreapi TokenAuthentication instance with auth.scheme and auth.token
     auth = coreapi.auth.TokenAuthentication(
         scheme='Token',
         token=response.json()['token']
-    )
-
+        )
     return auth

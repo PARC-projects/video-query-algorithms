@@ -69,8 +69,5 @@ def compute_matches(query_update, api_url, default_weights, default_threshold, s
 def change_process_state(query_id, process_state, client, schema):
     action = ["queries", "partial_update"]
     params = {"id": query_id, "process_state": process_state}
-    response = client.action(schema, action, params=params)
-
-    if response.status_code != requests.codes.ok:
-        return "Update of process_state to " + process_state + " for query " + query_id + " failed!"
+    client.action(schema, action, params=params)
     return
