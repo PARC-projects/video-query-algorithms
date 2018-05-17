@@ -19,7 +19,7 @@ FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 BASE_URL = "http://127.0.0.1:8000/"
 default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5}
 default_threshold = 0.8
-streams = ('rgb', 'warped optical flow')
+streams = ('rgb', 'warped_optical_flow')
 
 logging.basicConfig(
     format=FORMAT,

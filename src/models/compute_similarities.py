@@ -10,7 +10,7 @@ import os
         {
             "id": 6,
             "video_clip_id": 1,
-            "dnn_stream_id": "warped optical flow",
+            "dnn_stream_id": "warped_optical_flow",
             "dnn_stream_split": 3,
             "name": "global_pool",
             "dnn_weights_uri": "dummy_weights_uri",
@@ -30,7 +30,7 @@ import os
 """
 
 
-def compute_similarities(query, base_url, streams=('rgb', 'warped optical flow'), feature_name='global_pool'):
+def compute_similarities(query, base_url, streams=('rgb', 'warped_optical_flow'), feature_name='global_pool'):
     """
     Public contract to compute dictionary of averaged similarities for the query.
     Dictionary structure is { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
@@ -106,11 +106,12 @@ def select_matches(similarities, weights, threshold=0.8, max_number_matches=20):
     match_candidates = {k: v for k, v in scores.items() if v >= threshold}
     near_match_candidates = {k: v for k, v in scores.items() if lower_limit <= v < threshold}
 
-    mscores = int(max_number_matches/2)
+    mscores = min(int(max_number_matches/2), len(match_candidates))
+    m_near_scores = min(max_number_matches - mscores, len(near_match_candidates))
     match_scores = random.sample(match_candidates.items(), mscores)
-    near_match_scores = random.sample(near_match_candidates.items(), max_number_matches - mscores)
+    near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
 
-    return dict(match_scores, **near_match_scores)
+    return dict(match_scores + near_match_scores)
 
 
 def compute_score(similarities, weights):
@@ -165,7 +166,6 @@ def optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical
                 loss += ((np.heaviside((score - th), 1) - user_matches[video_clip_id]) * (score - th)) ** 2
             losses[iw, ith] = loss / len(test)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
-    print(iw0, ith0)
 
     # fit losses around minimum to a parabola and fine tune the minimum
     xrange = []
