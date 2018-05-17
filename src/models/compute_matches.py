@@ -1,7 +1,6 @@
 """
 Public API to algorithms logic chain
 """
-import requests
 from models.compute_similarities import compute_similarities, optimize_weights, select_matches
 
 
@@ -24,29 +23,35 @@ def compute_matches(query_update, api_url, default_weights, default_threshold, s
             }
     """
     updates = query_update.get_status()
+    if updates is None:
+        return
     client = query_update.client
     schema = query_update.schema
 
     # update queries (update type is "new" or "revise")
     for update_type, query_to_update in updates.items():
-
+        if query_to_update is None:
+            continue
         # Change process_state to 3: Processing
         change_process_state(query_to_update["query_id"], 3, client, schema)
 
         similarities = compute_similarities(query_to_update, api_url, streams)
 
         # determine weights, threshold, and scores
-        if update_type == "revise":
+        if update_type == "revise" and query_to_update["matches"]:
             # load matches that user has inspected
             user_matches = {}
             for match in query_to_update["matches"]:
                 if match.user_match is not None:
                     user_matches[match.video_clip] = match.user_match
+                else:
+                    user_matches[match.video_clip] = match.is_match
             scores_optimized, weights, threshold = optimize_weights(similarities, user_matches, streams)
-        elif update_type == "new":
+        elif update_type == "new" or (update_type == "revise" and not query_to_update["matches"]):
             weights = default_weights
             threshold = default_threshold
         else:
+            print("error")
             # TODO:  Create some reasonable error message and action
             return "Error"
 
@@ -56,10 +61,10 @@ def compute_matches(query_update, api_url, default_weights, default_threshold, s
         new_round = query_to_update["current_round"] + 1
         api_weights = []
         for k, stream in enumerate(streams):
-            api_weights[k] = weights[stream]
+            api_weights.append(weights[stream])
         new_result_id = query_update.create_query_result(query_to_update["query_id"], new_round, threshold, api_weights)
-        for video_clip, score in matches:
-            query_update.create_match(new_result_id, score, video_clip)
+        for video_clip, score in matches.items():
+            query_update.create_match(new_result_id, score, None, video_clip)
 
         # Change process_state to 4: Processed
         # TODO: Add email notification to user
