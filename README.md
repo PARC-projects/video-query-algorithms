@@ -1,9 +1,14 @@
 # Video Query Algorithms
 
-This respository provides the algorithms and code for building a database of embedded CNN features
-from videos, brokering requests from the Video Query application to perform searches of the database,
-searching the database for video clips similar to a provided reference, and updating the weighted criterion for
-selecting matches. The code and documentation for the Client and API are at
+This respository provides the algorithms and code for:
+- building a database of embedded DNN features
+from videos,
+- brokering requests from the Video Query API to perform searches of the database,
+- searching the database for video clips similar to a provided reference, and
+- updating the weighted criterion for
+selecting matches.
+
+The code and documentation for the Client and API are at
 
 - [Video Query Client](https://github.com/PARC-projects/video-query)
 - [Video Query Api](https://github.com/PARC-projects/video-query-api)
@@ -16,8 +21,8 @@ For detailed instruction on how to utilize this repository, please have a look a
 
 - [Home](https://github.com/PARC-projects/video-query-algorithms/wiki/Home)
 - [Pipeline Overview](https://github.com/PARC-projects/video-query-algorithms/wiki/Pipeline)
+- [Command Line Instructions](https://github.com/PARC-projects/video-query-algorithms/wiki/Command-Line-Instructions)
 - [Database](https://github.com/PARC-projects/video-query-algorithms/wiki/Database)
-- [Command Line Instructions](https://github.com/PARC-projects/video-query-algorithms/wiki/Command-Line)
 - [Broker](https://github.com/PARC-projects/video-query-algorithms/wiki/Broker)
 
 ## Contributing

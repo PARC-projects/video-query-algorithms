@@ -134,8 +134,9 @@ if __name__ == '__main__':
     with os.scandir(src_path) as vid:
         for video in vid:
             if video.is_dir() and not video.name.startswith('.'):
-                if args.video_path_type == 'absolute':
-                    video_path = video.path
-                else:
-                    video_path = video.name
-                create_or_get_video(video.name, video_path, args.duration, client, schema)
+                create_or_get_video(video.name, video.path, args.duration, client, schema)
+
+    if args.video_path_type == 'absolute':
+        video_path = video.path
+    else:
+        video_path = video.name
