@@ -43,10 +43,10 @@ def compute_similarities(query, base_url, streams=('rgb', 'warped_optical_flow')
                 "ref_clip": reference clip number,
                 "ref_clip_id": pk for the reference video clip,
                 "search_set": search set id
-                "result": for "revise" updates, QueryResult values for previous round
-                "matches": for "revise" updates, matches of previous round
                 "number_of_matches_to_review": number_of_matches
-                "current_round": current_round
+                "tuing_update": QueryResult values for search tuning parameters for most recent
+                                analysis of the query, including the current round
+                "matches": for "revise" updates, matches of previous round
             }
         base_url:   url of Video-Query-API
         streams:    DNN streams to include in similarity computations
@@ -134,11 +134,11 @@ def compute_score(similarities, weights):
     return scores
 
 
-def optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical_flow')):
+def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_optical_flow')):
     """
     Conditions:
     :param similarities: { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
-    :param user_matches: {<video clip id>: <0 or 1 to indicate whether user says it is a match>}
+    :param updated_matches: {<video clip id>: <0 or 1 to indicate whether user says it is a match>}
     :param streams: tuple of names of streams that we are using to assess similarity.
     :return: scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
              new_weights: {<stream>: weight}  there should be an entry for every item in streams.
@@ -163,7 +163,7 @@ def optimize_weights(similarities, user_matches, streams=('rgb', 'warped_optical
         for ith, th in enumerate(threshold_grid):
             loss = 0
             for video_clip_id, score in test.items():
-                loss += ((np.heaviside((score - th), 1) - user_matches[video_clip_id]) * (score - th)) ** 2
+                loss += ((np.heaviside((score - th), 1) - updated_matches[video_clip_id]) * (score - th)) ** 2
             losses[iw, ith] = loss / len(test)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 

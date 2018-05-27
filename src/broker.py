@@ -5,7 +5,6 @@ This script is designed to be executed as a long running service.
 TODO: Consider shifting to a daemonize approach to manage this process.
 """
 import os
-import time
 import threading
 from datetime import datetime
 import logging
@@ -32,16 +31,13 @@ def main():
     # Execute long pooling loop
     try:
         # check for updates
-        query_update = APIRepository(BASE_URL)
-        compute_matches(query_update, BASE_URL, default_weights, default_threshold, streams)
+        query_updater = APIRepository(BASE_URL)
+        compute_matches(query_updater, BASE_URL, default_weights, default_threshold, streams)
     except Exception as e:
         logging.error(e)
     finally:
         if os.environ.get('BROKER_THREADING') == 'True':
             threading.Timer(LOOP_EXECUTION_TIME, main).start()
-        else:
-            time.sleep(LOOP_EXECUTION_TIME)
-            main()
 
 
 if __name__ == '__main__':
