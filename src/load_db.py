@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument("--duration", type=int, default=10, help="clip duration, s, integer only")
     parser.add_argument("--video_path_type", type=str, choices=['absolute', 'relative'], default='relative',
                         help='relative paths will have a parent specified in the video query api')
-    parser.add_argument("--base_url", type=str, default="http://127.0.0.1:8000/docs/",
+    parser.add_argument("--base_url", type=str, default="http://127.0.0.1:8000/",
                         help='url for video query api')
     arguments = parser.parse_args()
 
