@@ -22,28 +22,24 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
                 "matches": for "revise" updates, matches of previous round
             }
     """
-    updates = query_updater.get_status()
-    client = query_updater.client
-    schema = query_updater.schema
+    updates_needed = query_updater.get_status()
 
-    # update queries (update type is "new" or "revise")
-    for update_type, query_to_update in updates.items():
+    # update matches for the "new" and "revised" queries in updates
+    for update_type, query_to_update in updates_needed.items():
         if query_to_update is None:
             continue
-        # Change process_state to 3: Processing
-        new_state = change_process_state(query_to_update["query_id"], 3, client, schema)
-        assert new_state == 3
-        # Change process_state to 5: Error if there is not a reference video clip record for the query reference time
+
+        # Change process_state to 3: Processing, or 5: Error if there is no video clip for the query reference time
         if query_to_update["ref_clip_id"] is None:
-            change_process_state(query_to_update["query_id"], 5, client, schema)
+            query_updater.change_process_state(query_to_update["query_id"], 5)
             continue
+        query_updater.change_process_state(query_to_update["query_id"], 3)
 
         # compute similarities with all clips in the search set
         similarities = compute_similarities(query_to_update, api_url, streams)
 
-        # determine weights, threshold, and scores
+        # determine weights, threshold, and scores for matches
         if update_type == "revise" and query_to_update["matches"]:
-            # load matches
             update_matches = {}
             for match in query_to_update["matches"]:
                 if match["user_match"] is not None:
@@ -59,15 +55,16 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
             # TODO:  Create some reasonable error message and action
             return "Error"
 
-        # load new matches into db, in a new query_result
-        matches = select_matches(similarities, weights, threshold,
-                                 query_to_update["number_of_matches_to_review"])
+        # create a new query_result for the next round
+        matches = select_matches(similarities, weights, threshold, query_to_update["number_of_matches_to_review"])
         new_round = query_to_update["tuning_update"]["round"] + 1
         api_weights = []
         for k, stream in enumerate(streams):
             api_weights.append(weights[stream])
-        new_result_id = query_updater.create_query_result(query_to_update["query_id"], new_round,
-                                                          threshold, api_weights)
+        new_result_id = query_updater.create_query_result(query_to_update["query_id"], new_round, threshold,
+                                                          api_weights)
+
+        # create matches for the next round
         if matches:
             for video_clip, score in matches.items():
                 query_updater.create_match(new_result_id, score, None, video_clip)
@@ -77,11 +74,4 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
 
         # Change process_state to 4: Processed
         # TODO: Add email notification to user
-        change_process_state(query_to_update["query_id"], 4, client, schema)
-
-
-def change_process_state(query_id, process_state, client, schema):
-    action = ["queries", "partial_update"]
-    params = {"id": query_id, "process_state": process_state}
-    result = client.action(schema, action, params=params)
-    return result["process_state"]
+        query_updater.change_process_state(query_to_update["query_id"], 4)

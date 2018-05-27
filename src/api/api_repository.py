@@ -65,3 +65,9 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         }
         result = self.client.action(self.schema, action, params=params)
         return result["id"]
+
+    def change_process_state(self, query_id, process_state):
+        action = ["queries", "partial_update"]
+        params = {"id": query_id, "process_state": process_state}
+        result = self.client.action(self.schema, action, params=params)
+        return result["process_state"]
