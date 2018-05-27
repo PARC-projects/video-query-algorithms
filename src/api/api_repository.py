@@ -71,3 +71,9 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         params = {"id": query_id, "process_state": process_state}
         result = self.client.action(self.schema, action, params=params)
         return result["process_state"]
+
+    def add_note(self, query_id, note):
+        action = ["queries", "partial_update"]
+        params = {"id": query_id, "notes": note}
+        result = self.client.action(self.schema, action, params=params)
+        return result["notes"]

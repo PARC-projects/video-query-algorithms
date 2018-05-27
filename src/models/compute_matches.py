@@ -3,6 +3,9 @@ Public API to algorithms logic chain
 """
 from models.compute_similarities import compute_similarities, optimize_weights, select_matches
 
+ref_clip_id_error = "*** Error: A video clip corresponding to the reference time does not exist" \
+                    "in the database. ***"
+
 
 def compute_matches(query_updater, api_url, default_weights, default_threshold, streams):
     """
@@ -32,6 +35,7 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
         # Change process_state to 3: Processing, or 5: Error if there is no video clip for the query reference time
         if query_to_update["ref_clip_id"] is None:
             query_updater.change_process_state(query_to_update["query_id"], 5)
+            query_updater.add_note(query_to_update["query_id"], ref_clip_id_error)
             continue
         query_updater.change_process_state(query_to_update["query_id"], 3)
 
