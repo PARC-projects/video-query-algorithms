@@ -35,7 +35,7 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
         assert new_state == 3
         # Change process_state to 5: Error if there is not a reference video clip record for the query reference time
         if query_to_update["ref_clip_id"] is None:
-            new_state = change_process_state(query_to_update["query_id"], 5, client, schema)
+            change_process_state(query_to_update["query_id"], 5, client, schema)
             continue
 
         # compute similarities with all clips in the search set
@@ -46,10 +46,10 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
             # load matches
             update_matches = {}
             for match in query_to_update["matches"]:
-                if match.user_match is not None:
-                    update_matches[match.video_clip] = match.user_match
+                if match["user_match"] is not None:
+                    update_matches[match['video_clip']] = match["user_match"]
                 else:
-                    update_matches[match.video_clip] = match.is_match
+                    update_matches[match['video_clip']] = match["is_match"]
             scores_optimized, weights, threshold = optimize_weights(similarities, update_matches, streams)
         elif update_type == "new" or (update_type == "revise" and not query_to_update["matches"]):
             weights = default_weights
@@ -68,7 +68,7 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
             api_weights.append(weights[stream])
         new_result_id = query_updater.create_query_result(query_to_update["query_id"], new_round,
                                                           threshold, api_weights)
-        if matches is not None:
+        if matches:
             for video_clip, score in matches.items():
                 query_updater.create_match(new_result_id, score, None, video_clip)
         else:
