@@ -135,12 +135,13 @@ def compute_score(similarities, weights):
     return scores
 
 
-def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_optical_flow')):
+def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_optical_flow'), ballast=0.3):
     """
     Conditions:
     :param similarities: { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
     :param updated_matches: {<video clip id>: <0 or 1 to indicate whether user says it is a match>}
     :param streams: tuple of names of streams that we are using to assess similarity.
+    :param ballast: extra penalty given to a user match falling below threshold vs. a non-match being above
     :return: scores: {<video_clip_id>: score}  where <video_clip_id> is the id primary key in the video_clips table
              new_weights: {<stream>: weight}  there should be an entry for every item in streams.
              threshold_optimum: real value of computed threshold to use to separate matches from non-matches
@@ -154,7 +155,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
     """
 
     # set up grid of weight & threshold
-    weight_grid = np.arange(0.5, 2.5, 0.1)
+    weight_grid = np.arange(0.5, 2.5, 0.05)
     threshold_grid = np.arange(0.6, 1.1, 0.025)
 
     # compute loss function and find minimum.  Loss = 0 for correct scores, abs(score - th) for incorrect scores
@@ -165,7 +166,8 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
             loss = 0
             for video_clip_id, score in test.items():
                 if video_clip_id in updated_matches:
-                    loss += (np.heaviside(score - th, 0.5) - updated_matches[video_clip_id]) * (score - th)
+                    loss += (np.heaviside(score - th, 0.5) - updated_matches[video_clip_id]) * (score - th) \
+                            * (1 + updated_matches[video_clip_id]*ballast)
             losses[iw, ith] = loss / len(updated_matches)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 
