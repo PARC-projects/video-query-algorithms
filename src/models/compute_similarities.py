@@ -164,7 +164,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
             loss = 0
             for video_clip_id, score in test.items():
                 if video_clip_id in updated_matches:
-                    loss += (1 - 2 * updated_matches[video_clip_id]) * (score - th) * abs(score - th)
+                    loss += (1 - 2 * updated_matches[video_clip_id]) * (score - th)
             losses[iw, ith] = loss / len(updated_matches)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 
