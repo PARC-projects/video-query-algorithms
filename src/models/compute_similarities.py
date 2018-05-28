@@ -86,10 +86,10 @@ def compute_similarities(query, base_url, streams=('rgb', 'warped_optical_flow')
     return avgd_similarities
 
 
-def select_matches(similarities, weights, threshold=0.8, max_number_matches=20):
+def select_matches(similarities, weights, threshold=0.8, max_number_matches=20, near_miss=0.5):
     """
     Find matches and near matches for review,
-    half being above threshold and half for 1-2*(1-threshold) < score < threshold.
+    half being above threshold and half for 1-(1+near_miss)*(1-threshold) < score < threshold.
     For review, matches are chosen randomly from all scores within the specified interval,
     with the total of matches and near matches being equal to or less than max_number_matches.
 
@@ -98,11 +98,12 @@ def select_matches(similarities, weights, threshold=0.8, max_number_matches=20):
     :param weights:  weights for similarities for each stream
     :param threshold: real threshold, either the initial default or a new threshold_optimum from optimize_weights
     :param max_number_matches:  max number of matches the user wants to review.
+    :param near_miss:  range of scores for near misses relative to the range (1-threshold) for hits
     :return: match_indicator: {<video_clip_id>: <True or False>}
     """
     scores = compute_score(similarities, weights)
 
-    lower_limit = 1 - 2*(1 - threshold)
+    lower_limit = 1 - (1 + near_miss)*(1 - threshold)
     match_candidates = {k: v for k, v in scores.items() if v >= threshold}
     near_match_candidates = {k: v for k, v in scores.items() if lower_limit <= v < threshold}
 
@@ -156,7 +157,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
     weight_grid = np.arange(0.5, 2.5, 0.1)
     threshold_grid = np.arange(0.6, 1.1, 0.025)
 
-    # compute loss function (L2 loss) and find minimum
+    # compute loss function and find minimum.  Loss = 0 for correct scores, abs(score - th) for incorrect scores
     losses = 10 * np.ones([weight_grid.shape[0], threshold_grid.shape[0]])     # initialize loss matrix
     for iw, w in enumerate(weight_grid):
         test = compute_score(similarities, {streams[0]: 1.0, streams[1]: w})
@@ -164,7 +165,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
             loss = 0
             for video_clip_id, score in test.items():
                 if video_clip_id in updated_matches:
-                    loss += (1 - 2 * updated_matches[video_clip_id]) * (score - th)
+                    loss += (np.heaviside(score - th, 0.5) - updated_matches[video_clip_id]) * (score - th)
             losses[iw, ith] = loss / len(updated_matches)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 
@@ -184,9 +185,14 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
         ydata.append(losses[iw0, ith0])
         ydata.append(losses[iw0, ith0 + 1])
         ydata.append(losses[iw0 + 1, ith0])
-        popt, _ = curve_fit(_quad_fun, xrange, ydata)
-        weight_optimum = popt[3]
-        threshold_optimum = popt[4]
+        try:
+            popt, _ = curve_fit(_quad_fun, xrange, ydata)
+            weight_optimum = popt[3]
+            threshold_optimum = popt[4]
+        except:
+            # TODO: add explicit Jacobian to curve_fit above so exceptions are fewer to none
+            weight_optimum = weight_grid[iw0]
+            threshold_optimum = threshold_grid[ith0]
 
     # compute score at optimal weight and return
     new_weights = {streams[0]: 1.0, streams[1]: weight_optimum}

@@ -51,7 +51,6 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
                 else:
                     update_matches[match['video_clip']] = match["user_match"]
             scores_optimized, weights, threshold = optimize_weights(similarities, update_matches, streams)
-            print(scores_optimized, weights, threshold)
         elif update_type == "new" or (update_type == "revise" and not query_to_update["matches"]):
             weights = default_weights
             threshold = default_threshold
