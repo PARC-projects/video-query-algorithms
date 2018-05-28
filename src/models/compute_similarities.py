@@ -154,7 +154,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
 
     # set up grid of weight & threshold
     weight_grid = np.arange(0.5, 2.5, 0.1)
-    threshold_grid = np.arange(0.6, 1.0, 0.05)
+    threshold_grid = np.arange(0.6, 1.1, 0.025)
 
     # compute loss function (L2 loss) and find minimum
     losses = 10 * np.ones([weight_grid.shape[0], threshold_grid.shape[0]])     # initialize loss matrix
@@ -163,24 +163,30 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
         for ith, th in enumerate(threshold_grid):
             loss = 0
             for video_clip_id, score in test.items():
-                loss += ((np.heaviside((score - th), 1) - updated_matches[video_clip_id]) * (score - th)) ** 2
-            losses[iw, ith] = loss / len(test)
+                if video_clip_id in updated_matches:
+                    loss += (1 - 2 * updated_matches[video_clip_id]) * (score - th) * abs(score - th)
+            losses[iw, ith] = loss / len(updated_matches)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 
-    # fit losses around minimum to a parabola and fine tune the minimum
+    # fit losses around minimum to a parabola and fine tune the minimum, unless minimum is on the border of the grid
     xrange = []
     ydata = []
-    xrange.append((weight_grid[iw0 - 1], weight_grid[iw0], weight_grid[iw0], weight_grid[iw0], weight_grid[iw0 + 1]))
-    xrange.append((threshold_grid[ith0], threshold_grid[ith0 - 1], threshold_grid[ith0], threshold_grid[ith0 + 1],
-                   threshold_grid[ith0]))
-    ydata.append(losses[iw0 - 1, ith0])
-    ydata.append(losses[iw0, ith0 - 1])
-    ydata.append(losses[iw0, ith0])
-    ydata.append(losses[iw0, ith0 + 1])
-    ydata.append(losses[iw0 + 1, ith0])
-    popt, _ = curve_fit(_quad_fun, xrange, ydata)
-    weight_optimum = popt[3]
-    threshold_optimum = popt[4]
+    if iw0 == 0 or ith0 == 0 or iw0 == len(weight_grid)-1 or ith0 == len(threshold_grid)-1:
+        weight_optimum = weight_grid[iw0]
+        threshold_optimum = threshold_grid[ith0]
+    else:
+        xrange.append((weight_grid[iw0 - 1], weight_grid[iw0], weight_grid[iw0], weight_grid[iw0],
+                       weight_grid[iw0 + 1]))
+        xrange.append((threshold_grid[ith0], threshold_grid[ith0 - 1], threshold_grid[ith0], threshold_grid[ith0 + 1],
+                       threshold_grid[ith0]))
+        ydata.append(losses[iw0 - 1, ith0])
+        ydata.append(losses[iw0, ith0 - 1])
+        ydata.append(losses[iw0, ith0])
+        ydata.append(losses[iw0, ith0 + 1])
+        ydata.append(losses[iw0 + 1, ith0])
+        popt, _ = curve_fit(_quad_fun, xrange, ydata)
+        weight_optimum = popt[3]
+        threshold_optimum = popt[4]
 
     # compute score at optimal weight and return
     new_weights = {streams[0]: 1.0, streams[1]: weight_optimum}

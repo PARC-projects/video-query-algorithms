@@ -20,8 +20,8 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
                 "ref_clip_id": pk for the reference video clip,
                 "search_set": search set id
                 "number_of_matches_to_review": number_of_matches
-                "tuing_update": QueryResult values for search tuning parameters for most recent
-                                analysis of the query, including the current round
+                "tuning_update": for "revise" updates, QueryResult values for search tuning parameters
+                                for most recent round of the query
                 "matches": for "revise" updates, matches of previous round
             }
     """
@@ -46,11 +46,12 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
         if update_type == "revise" and query_to_update["matches"]:
             update_matches = {}
             for match in query_to_update["matches"]:
-                if match["user_match"] is not None:
-                    update_matches[match['video_clip']] = match["user_match"]
-                else:
+                if match["user_match"] is None:
                     update_matches[match['video_clip']] = match["is_match"]
+                else:
+                    update_matches[match['video_clip']] = match["user_match"]
             scores_optimized, weights, threshold = optimize_weights(similarities, update_matches, streams)
+            print(scores_optimized, weights, threshold)
         elif update_type == "new" or (update_type == "revise" and not query_to_update["matches"]):
             weights = default_weights
             threshold = default_threshold
@@ -61,7 +62,9 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
 
         # create a new query_result for the next round
         matches = select_matches(similarities, weights, threshold, query_to_update["number_of_matches_to_review"])
-        new_round = query_to_update["tuning_update"]["round"] + 1
+        new_round = 1
+        if update_type == "revise":
+            new_round = query_to_update["tuning_update"]["round"] + new_round
         api_weights = []
         for k, stream in enumerate(streams):
             api_weights.append(weights[stream])

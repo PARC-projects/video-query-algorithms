@@ -20,6 +20,7 @@ def main(args):
                     video_path = video.path
                 else:
                     video_path = video.name
+                # TODO: add mp4 or avi to video name
                 video_object = loader.create_or_get_video(video.name, video_path)
                 with os.scandir(video.path) as split_dir:
                     for split in split_dir:
