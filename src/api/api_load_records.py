@@ -5,6 +5,8 @@ from api.authenticate import authenticate
 import coreapi
 import os
 import csv
+from requests import ConnectionError
+from time import sleep
 
 
 class APILoadRecords:   # base_url is the api url.  The default is the dev default.
@@ -22,19 +24,18 @@ class APILoadRecords:   # base_url is the api url.  The default is the dev defau
             "name": video_name,
             "path": video_path
         }
-        response = self.client.action(self.schema, action, params=params)
+        response = self._request(action, params)
         if response["results"]:
             assert len(response["results"]) == 1
             action = ["videos", "read"]
             params = {"id": response["results"][0]["id"]}
-            video_object = self.client.action(self.schema, action, params=params)
         else:
             action = ["videos", "create"]
             params = {
                 "name": video_name,
                 "path": video_path,
             }
-            video_object = self.client.action(self.schema, action, params=params)
+        video_object = self._request(action, params)
         return video_object
 
     def create_video_clips_and_features(self, video_object, split_path, duration):
@@ -46,7 +47,7 @@ class APILoadRecords:   # base_url is the api url.  The default is the dev defau
                     reader = csv.reader(f)
                     header = next(reader)
                     video_name = header[0].split('=')[-1]
-                    assert video_name == video_object["name"]
+                    assert video_name == video_object["name"].split('.')[0]
                     # video_uri = header[1].split('=')[-1]
                     dnn_stream = header[2].split('=')[-1]
                     feature_name = header[3].split('=')[-1]
@@ -68,12 +69,13 @@ class APILoadRecords:   # base_url is the api url.  The default is the dev defau
             "clip": clip,
             "duration": duration,
         }
-        response = self.client.action(self.schema, action, params=params)
+        response = self._request(action, params)
+
+        # if the video clip exists, read it.  Otherwise, create it
         if response["results"]:
             assert len(response["results"]) == 1
             action = ["video-clips", "read"]
             params = {"id": response["results"][0]["id"]}
-            clip_object = self.client.action(self.schema, action, params=params)
         else:
             action = ["video-clips", "create"]
             params = {
@@ -82,11 +84,10 @@ class APILoadRecords:   # base_url is the api url.  The default is the dev defau
                 "debug_video_uri": video_object["path"],
                 "video": video_object["id"],
             }
-            clip_object = self.client.action(self.schema, action, params=params)
+        clip_object = self._request(action, params)
         return clip_object["id"]
 
     def _create_feature(self, feature_vector, split, feature_name, dnn_weights_file_uri, clip_id, dnn_stream):
-
         # check to see if feature already exists, and create it if needed
         action = ["features", "list"]
         params = {
@@ -94,7 +95,9 @@ class APILoadRecords:   # base_url is the api url.  The default is the dev defau
             "dnn_stream": dnn_stream,
             "dnn_stream_split": split,
         }
-        response = self.client.action(self.schema, action, params=params)
+        response = self._request(action, params)
+
+        # if the feature already exists, validate there is only one.  If it does not exist, create it
         if response["results"]:
             assert len(response["results"]) == 1
         else:
@@ -107,4 +110,12 @@ class APILoadRecords:   # base_url is the api url.  The default is the dev defau
                 "video_clip": clip_id,
                 "dnn_stream": dnn_stream,
             }
-            self.client.action(self.schema, action, params=params)
+            self._request(action, params)
+
+    def _request(self, action, params):
+        while True:
+            try:
+                return self.client.action(self.schema, action, params=params)
+            except ConnectionError:
+                sleep(0.05)
+                print('Try again: action = {}, params = {}'.format(action, params))
