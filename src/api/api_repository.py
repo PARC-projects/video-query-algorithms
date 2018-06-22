@@ -22,10 +22,11 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
                 "ref_clip": reference clip number,
                 "ref_clip_id": pk for the reference video clip,
                 "search_set": search set id
-                "result": for "revise" updates, QueryResult values for previous round
-                "matches": for "revise" updates, matches of previous round
                 "number_of_matches_to_review": number_of_matches
-                "current_round": current_round
+                "tuning_update":  QueryResult record for latest round, with round number and
+                                    match criterion and weights for tuning the search
+                "matches": for "revise" updates, matches of previous round,
+                            i.e. with query_results field equal to that of previous round
             }
         """
         try:
@@ -64,3 +65,15 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         }
         result = self.client.action(self.schema, action, params=params)
         return result["id"]
+
+    def change_process_state(self, query_id, process_state):
+        action = ["queries", "partial_update"]
+        params = {"id": query_id, "process_state": process_state}
+        result = self.client.action(self.schema, action, params=params)
+        return result["process_state"]
+
+    def add_note(self, query_id, note):
+        action = ["queries", "partial_update"]
+        params = {"id": query_id, "notes": note}
+        result = self.client.action(self.schema, action, params=params)
+        return result["notes"]
