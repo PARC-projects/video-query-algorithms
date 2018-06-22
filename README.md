@@ -1,39 +1,51 @@
 # Video Query Algorithms
 
+Home page for Video Query project: **[Video Query Home](https://github.com/PARC-projects/video-query-home)**
+
+
 This respository provides the algorithms and code for:
 - building a database of embedded DNN features
 from videos,
 - brokering requests from the Video Query API to perform searches of the database,
 - searching the database for video clips similar to a provided reference, and
-- updating the weighted criterion for
+- updating the weighted criteria for
 selecting matches.
 
 The code and documentation for the Client and API are at
 
-- [Video Query Client](https://github.com/PARC-projects/video-query)
+- [Video Query Client](https://github.com/PARC-projects/video-query-client-web)
 - [Video Query Api](https://github.com/PARC-projects/video-query-api)
 
-For an overview of the Video Query project please see the reference [TBD arxiv pdf](https://arxiv.org/).
+For further information about the Video Query project, please go to [Video Query Home](https://github.com/PARC-projects/video-query-home).
 
 ## Wiki
 
 For detailed instruction on how to utilize this repository, please have a look at our Wiki
 
-- [Home](https://github.com/PARC-projects/video-query-algorithms/wiki/Home)
-- [Pipeline Overview](https://github.com/PARC-projects/video-query-algorithms/wiki/Pipeline)
-- [Command Line Instructions](https://github.com/PARC-projects/video-query-algorithms/wiki/Command-Line-Instructions)
-- [Database](https://github.com/PARC-projects/video-query-algorithms/wiki/Database)
-- [Broker](https://github.com/PARC-projects/video-query-algorithms/wiki/Broker)
+- [Algorithms](https://github.com/PARC-projects/video-query-home/wiki/Algorithms)
+  - [Pipeline](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Pipeline)
+  - [Command Line](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Command-Line)
+  - [Database](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Database)
+  - [Conda](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Conda)
+  - [Broker](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Broker)
 
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull
 requests to us.
 
-### Authors
+## Credits
 
+Include a citation for a paper when we publish one.  For now:
+If you find this repository useful, please cite
+[https://github.com/PARC-projects/video-query-home](https://github.com/PARC-projects/video-query-home).
+
+#### Project team
+Software development:
 - [Frank Torres](https://github.com/fetorres)
 - [Chad Ramos](https://github.com/chad-ramos)
+
+Algorithm development by Frank Torres, Matthew Shreve, Gaurang Ganguli and Hoda Eldardiry.
 
 ## License
 
