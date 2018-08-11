@@ -40,7 +40,10 @@ class TargetProperties:
         Output: self.target_features, also of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
-        if self.ticket["dynamic_target_adjustment"]:
+        # if not self.ticket["dynamic_target_adjustment"]:
+        if True:  # Currently there is no dynamic target adjustment - experimenting with possibilities
+            self.target_features = self.normalized_ref_clip_features()
+        else:
             # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
             features_4_matches, self.splits = self.features_of_confirmed_matches()
 
@@ -49,8 +52,31 @@ class TargetProperties:
                 self.target_features = self.dynamic_target_adjustment(features_4_matches)
             else:
                 self.target_features = self.normalized_ref_clip_features()
-        else:
-            self.target_features = self.normalized_ref_clip_features()
+
+    def normalized_ref_clip_features(self):
+        ref_clip_features, self.splits = self._get_clip_features(self.ticket["ref_clip_id"])
+        ref_features = {}
+        for stream, split_features in ref_clip_features.items():
+            ref_features[stream] = {}
+            for split, feature in split_features.items():
+                ref_features[stream][split] = feature / np.dot(feature, feature)
+        return ref_features
+
+    def features_of_confirmed_matches(self):
+        # Interact with the API endpoint to get confirmed matches for the query
+        action = ["matches", "list"]
+        params = {"query_result__query": self.ticket["query_id"], "user_match": True}
+        confirmed_matches = self.client.action(self.schema, action, params=params)
+
+        # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
+        features_confirmed_matches = []
+        splits_confirmed_matches = set()
+        for match in confirmed_matches["results"]:
+            match_features, match_splits = self._get_clip_features(match["video_clip"])
+            features_confirmed_matches.append(match_features)
+            splits_confirmed_matches.update(match_splits)  # a set, so elements are added only if not already in splits
+
+        return features_confirmed_matches, splits_confirmed_matches
 
     def dynamic_target_adjustment(self, list_of_feature_dictionaries):
         """
@@ -122,31 +148,6 @@ class TargetProperties:
                                               / np.dot(features_avgd[stream][splt], features_avgd[stream][splt])
 
         return features_avgd
-
-    def features_of_confirmed_matches(self):
-        # Interact with the API endpoint to get confirmed matches for the query
-        action = ["matches", "list"]
-        params = {"query_result__query": self.ticket["query_id"], "user_match": True}
-        result = self.client.action(self.schema, action, params=params)
-
-        # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
-        features_4_matches = []
-        splits_4_matches = set()
-        for match in result["results"]:
-            match_features, match_splits = self._get_clip_features(match["video_clip"])
-            features_4_matches.append(match_features)
-            splits_4_matches.update(match_splits)  # a set, so elements are added only if not already in splits
-
-        return features_4_matches, splits_4_matches
-
-    def normalized_ref_clip_features(self):
-        ref_clip_features, self.splits = self._get_clip_features(self.ticket["ref_clip_id"])
-        ref_features = {}
-        for stream, split_features in ref_clip_features.items():
-            ref_features[stream] = {}
-            for split, feature in split_features.items():
-                ref_features[stream][split] = feature / np.dot(feature, feature)
-        return ref_features
 
     def _get_clip_features(self, clip_id):
         """

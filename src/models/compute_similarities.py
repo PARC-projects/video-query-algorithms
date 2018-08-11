@@ -39,7 +39,6 @@ def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optic
     # get the feature dictionary for the target.
     # Dictionary structure is { <stream type>: {<split #>: [<ref feature>], ...} }
     target.compute_target_features()
-    print(target.target_features)
 
     # get the feature dictionary for all search set video clips.
     # Dictionary structure is { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
