@@ -28,38 +28,36 @@ class TargetProperties:
         self.schema = schema
         self.streams = streams
         self.feature_name = feature_name
+        self.ref_clip_features, self.splits = self._get_clip_features(self.ticket["ref_clip_id"])
         self.target_features = {}
-        self.splits = ()
 
     def compute_target_features(self):
         """
         Method to compute dictionary of target features for the current state of query with id = ticket["query_id"].
         Depending on dynamic target adjustment setting, either choose ref clip as the target or adjust the target
-        based on fitting all user confirmed matches.
+        based on all user confirmed matches.
 
         Output: self.target_features, also of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
-        # if not self.ticket["dynamic_target_adjustment"]:
-        if True:  # Currently there is no dynamic target adjustment - experimenting with possibilities
-            self.target_features = self.normalized_ref_clip_features()
+        if not self.ticket["dynamic_target_adjustment"]:
+            self.target_features = self.scaled_ref_clip_features()
         else:
             # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
-            features_4_matches, self.splits = self.features_of_confirmed_matches()
+            features_4_matches, splits_4_matches = self.features_of_confirmed_matches()
 
             # Compute the new target using dynamic target adjustment, unless there are no confirmed matches
             if features_4_matches:
-                self.target_features = self.dynamic_target_adjustment(features_4_matches)
+                self.target_features = self.dynamic_target_adjustment(features_4_matches, splits_4_matches)
             else:
-                self.target_features = self.normalized_ref_clip_features()
+                self.target_features = self.scaled_ref_clip_features()
 
-    def normalized_ref_clip_features(self):
-        ref_clip_features, self.splits = self._get_clip_features(self.ticket["ref_clip_id"])
+    def scaled_ref_clip_features(self):
         ref_features = {}
-        for stream, split_features in ref_clip_features.items():
+        for stream, split_features in self.ref_clip_features.items():
             ref_features[stream] = {}
             for split, feature in split_features.items():
-                ref_features[stream][split] = feature / np.dot(feature, feature)
+                ref_features[stream][split] = self._scale_feature(feature)
         return ref_features
 
     def features_of_confirmed_matches(self):
@@ -78,57 +76,30 @@ class TargetProperties:
 
         return features_confirmed_matches, splits_confirmed_matches
 
-    def dynamic_target_adjustment(self, list_of_feature_dictionaries):
+    def dynamic_target_adjustment(self, list_of_feature_dictionaries, splits):
         """
         :param list_of_feature_dictionaries: Clip features dictionaries with
                                              entries { <stream type>: {<split #>:[<feature>], ...} }
-        Logic:
-        for features of each confirmed match:
-            for each stream:
-                for each split:
-                    update M by adding feature_T . feature
-                    update b by adding feature
-                invert M
-                compute a_T = b_T * M^-1
-                add a to target dictionary
+        Procedure:
+        for each stream:
+            for each split:
+                average features for all confirmed matches;
+                for each x_i in averaged_feature:
+                    if x_i < ref_clip_feature_i:
+                        target_i = x_i
+                    else:
+                        target_i = ref_feature_i
+                add averaged_feature to target_features
         """
-        """
-        # initialize M matrix, b vector, and results dictionaries
-        matrices_M = {}
-        vectors_b = {}
-        results = {}
-        for stream in self.streams:
-            matrices_M[stream] = {}
-            vectors_b[stream] = {}
-            results[stream] = {}
-            for splt in self.splits:
-                matrices_M[stream][splt] = np.array(0)
-                vectors_b[stream][splt] = np.array(0)
-
-        # update M matrix using features for each match
-        for feature_dictionary in list_of_feature_dictionaries:  # one feature_dictionary for each match
-            for stream_type, split_features in feature_dictionary.items():
-                for split, feature in split_features.items():
-                    matrices_M[stream_type][split] = matrices_M[stream_type][split] \
-                                                   + np.transpose([feature])*np.asarray(feature)
-                    vectors_b[stream_type][split] = vectors_b[stream_type][split] + np.asarray(feature)
-
-        # solve for target feature vectors
-        for stream in self.streams:
-            for splt in self.splits:
-                mat_M = matrices_M[stream][splt]
-                b_vector = vectors_b[stream][splt]
-                results[stream][splt] = np.linalg.solve(mat_M.T, b_vector)
-        return results
-        """
-        # average all features for the same stream:split pair
         # First initialize a dictionary for the averaged features and the number of features
         features_avgd = {}
         features_number = {}
+        target_scaled = {}
         for stream in self.streams:
             features_avgd[stream] = {}
             features_number[stream] = {}
-            for splt in self.splits:
+            target_scaled[stream] = {}
+            for splt in splits:
                 features_avgd[stream][splt] = np.array(0)
                 features_number[stream][splt] = 0
 
@@ -139,15 +110,16 @@ class TargetProperties:
                     features_avgd[stream_type][split] = features_avgd[stream_type][split] + np.asarray(feature)
                     features_number[stream_type][split] += 1
 
-        # divide by number of features of each type to get the average, and then normalize
+        # divide by number of features of each type to get the average, and compare with ref clip feature.
+        # Compute target_feature as the element-wise minimum of the ref clip feature and features_avgd
+        # scale target_feature before returning it
         for stream in self.streams:
             for splt in self.splits:
-                features_avgd[stream][splt] = features_avgd[stream][splt] \
-                                                    / features_number[stream][splt]
-                features_avgd[stream][splt] = features_avgd[stream][splt] \
-                                              / np.dot(features_avgd[stream][splt], features_avgd[stream][splt])
+                features_avgd[stream][splt] = features_avgd[stream][splt] / features_number[stream][splt]
+                new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features)
+                target_scaled[stream][splt] = self._scale_feature(new_target)
 
-        return features_avgd
+        return target_scaled
 
     def _get_clip_features(self, clip_id):
         """
@@ -173,3 +145,6 @@ class TargetProperties:
                 splits.add(fsplit)  # splits is a set, so only new splits get added
                 results[stream_type][fsplit] = feature_object["feature_vector"]
         return results, splits
+
+    def _scale_feature(self, f):
+        return f / np.dot(f, f)
