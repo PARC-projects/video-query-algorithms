@@ -4,39 +4,17 @@ import coreapi
 from api.authenticate import authenticate
 import random
 import os
-"""
-    Feature lists returned by the API are as follows:
-    [
-        {
-            "id": 6,
-            "video_clip_id": 1,
-            "dnn_stream_id": "warped_optical_flow",
-            "dnn_stream_split": 3,
-            "name": "global_pool",
-            "dnn_weights_uri": "dummy_weights_uri",
-            "dnn_spec_uri": "dummy_spec_uri",
-            "feature_vector": [
-                1.1,
-                2.3,
-                0.98,
-                0.5,
-                0.2,
-                1.05,
-                ...
-            ]
-        },
-        ...
-    ]
-"""
+from models.target_properties import TargetProperties
 
 
-def compute_similarities(query, base_url, streams=('rgb', 'warped_optical_flow'), feature_name='global_pool'):
+def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optical_flow'), feature_name='global_pool'):
     """
-    Public contract to compute dictionary of averaged similarities for the query.
-    Dictionary structure is { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
+    Public contract to compute dictionary of averaged similarities for the current state of query = ticket["query_id"].
+    Dictionary structure for similarities is
+        { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
 
-    Args:
-        query:
+    Arguments:
+        request_ticket:
             {
                 "query_id": query["id"],
                 "video_id": query["video"],
@@ -44,9 +22,10 @@ def compute_similarities(query, base_url, streams=('rgb', 'warped_optical_flow')
                 "ref_clip_id": pk for the reference video clip,
                 "search_set": search set id
                 "number_of_matches_to_review": number_of_matches
-                "tuing_update": QueryResult values for search tuning parameters for most recent
+                "tuning_update": QueryResult values for search tuning parameters for most recent
                                 analysis of the query, including the current round
                 "matches": for "revise" updates, matches of previous round
+                "dynamic_target_adjustment": dynamic_target_adjustment
             }
         base_url:   url of Video-Query-API
         streams:    DNN streams to include in similarity computations
@@ -56,30 +35,30 @@ def compute_similarities(query, base_url, streams=('rgb', 'warped_optical_flow')
     client = coreapi.Client(auth=authenticate(base_url))
     schema = client.get(os.path.join(base_url, "docs"))
 
-    # get reference clip feature dictionary with entries like
-    # { <stream type>: {<split #>: [<ref feature>], ...} }
-    ref_dict, splits = _get_ref_clip_features(query["ref_clip_id"], client, schema, streams, feature_name)
+    target = TargetProperties(request_ticket, client, schema, streams, feature_name)
+    # get the feature dictionary for the target.
+    # Dictionary structure is { <stream type>: {<split #>: [<ref feature>], ...} }
+    target.compute_target_features()
 
-    # get target feature dictionary with entries like
-    # { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
-    target_dict = _get_target_features(query["search_set"], client, schema, streams, splits, feature_name)
+    # get the feature dictionary for all search set video clips.
+    # Dictionary structure is { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
+    candidates = _get_candidate_features(request_ticket["search_set"], client, schema, streams, target.splits, feature_name)
 
-    # compute similarities and average them
-    # avgd_similarities structure is { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
+    # compute similarities and ensemble average them over the splits
     avgd_similarities = {}
-    for stream_type, all_splits in ref_dict.items():
+    for stream_type, all_splits in target.target_features.items():
         similarities = {}
         # compute dot product similarities{} for each split, saved as key:value = clip:array of similarities
-        for split, ref_feature in all_splits.items():
-            for clip, target_feature in target_dict[stream_type][split].items():
-                similarity = np.dot(ref_feature, target_feature) / np.linalg.norm(ref_feature)**2
+        for split, target_feature in all_splits.items():
+            for clip, candidate_feature in candidates[stream_type][split].items():
+                similarity = np.dot(target_feature, candidate_feature)
                 similarities[clip] = similarities.get(clip, []) + [similarity]
 
         # ensemble average over the splits for each id
         for clip_id, sim_array in similarities.items():
             id_len = len(sim_array)
             avg_sim = sum(sim_array) / id_len
-            # create dictionary item for clip_id if it does not exist:
+            # create dictionary item for clip_id if it does not exist, and add result:
             avgd_similarities[clip_id] = avgd_similarities.get(clip_id, {})
             avgd_similarities[clip_id].update({stream_type: [avg_sim, id_len]})
 
@@ -207,30 +186,8 @@ def _quad_fun(x, a0, b0, c0, w0, th0):
     return a0 * (x[0] - w0) ** 2 + b0 * (x[1] - th0) ** 2 + c0
 
 
-def _get_ref_clip_features(query_ref_clip_id, client, schema, streams, feature_name):
-    # Interact with the API endpoint to get features for the ref video clip
-    action = ["video-clips", "features"]
-    params = {"id": query_ref_clip_id}
-    ref_features = client.action(schema, action, params=params)
-
-    # set up reference feature dictionary with entries like { <stream type>: {<split #>:[<feature>], ...} }
-    ref_dict = {}
-    splits = set()
-    for stream_type in streams:
-        ref_dict[stream_type] = {}
-    for feature_object in ref_features:
-        stream_type = feature_object["dnn_stream_id"]  # this is actually the stream name, not the id
-        fsplit = feature_object["dnn_stream_split"]
-        splits.add(fsplit)  # splits is a set, so fsplit is only added if it is not already in splits
-        name = feature_object["name"]
-        feature_vector = feature_object["feature_vector"]
-        if stream_type in streams and name == feature_name:
-            ref_dict[stream_type][fsplit] = feature_vector
-    return ref_dict, splits
-
-
-def _get_target_features(search_set_id, client, schema, streams, splits, feature_name):
-    # Create target feature dictionary with entries like
+def _get_candidate_features(search_set_id, client, schema, streams, splits, feature_name):
+    # Create video clip feature dictionary with entries like
     # { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
 
     # Interact with the API endpoint to get features for the query's search set
@@ -239,11 +196,11 @@ def _get_target_features(search_set_id, client, schema, streams, splits, feature
     features = client.action(schema, action, params=params)
 
     # create dictionary
-    target_dict = {}
+    candidate_dict = {}
     for stream in streams:
-        target_dict[stream] = {}
+        candidate_dict[stream] = {}
         for split in splits:
-            target_dict[stream][split] = {}
+            candidate_dict[stream][split] = {}
 
     for tf in features:
         stream_type = tf["dnn_stream_id"]
@@ -252,5 +209,5 @@ def _get_target_features(search_set_id, client, schema, streams, splits, feature
         name = tf["name"]
         nclip = tf["video_clip_id"]
         if stream_type in streams and name == feature_name and fsplit in splits:
-            target_dict[stream_type][fsplit][nclip] = feature_vector
-    return target_dict
+            candidate_dict[stream_type][fsplit][nclip] = feature_vector
+    return candidate_dict

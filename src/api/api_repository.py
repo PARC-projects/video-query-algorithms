@@ -23,6 +23,8 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
                 "ref_clip_id": pk for the reference video clip,
                 "search_set": search set id
                 "number_of_matches_to_review": number_of_matches
+                "dynamic_target_adjustment": True or False, dynamically adjust target features for each round
+            For 'revise' queries:
                 "tuning_update":  QueryResult record for latest round, with round number and
                                     match criterion and weights for tuning the search
                 "matches": for "revise" updates, matches of previous round,
@@ -73,7 +75,13 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         return result["process_state"]
 
     def add_note(self, query_id, note):
-        action = ["queries", "partial_update"]
-        params = {"id": query_id, "notes": note}
+        # Get current notes by interacting with API
+        action = ["queries", "read"]
+        params = {"id": query_id}
         result = self.client.action(self.schema, action, params=params)
-        return result["notes"]
+        # add note to current notes
+        new_notes = result["notes"] + '\n\n' + note
+        # update query object with new notes
+        action = ["queries", "partial_update"]
+        params = {"id": query_id, "notes": new_notes}
+        result = self.client.action(self.schema, action, params=params)
