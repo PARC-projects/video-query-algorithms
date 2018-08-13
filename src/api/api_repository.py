@@ -34,7 +34,8 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         try:
             return {
                 'revise': self._get_query_ready_for_revision(),
-                'new': self._get_query_ready_for_new_matches()
+                'new': self._get_query_ready_for_new_matches(),
+                'finalize': self._get_query_ready_for_finalize()
             }
         except Exception as e:
             logging.error(e)
@@ -45,6 +46,10 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_new_matches(self):
         action = ["query-state", "compute-new", "list"]
+        return self.client.action(self.schema, action)
+
+    def _get_query_ready_for_finalize(self):
+        action = ["query-state", "compute-finalize", "list"]
         return self.client.action(self.schema, action)
 
     def create_match(self, qresult, score, user_match, video_clip):
