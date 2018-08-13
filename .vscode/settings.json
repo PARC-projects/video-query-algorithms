@@ -8,8 +8,12 @@
   // // Bash on Ubuntu (on Windows)
   // "terminal.integrated.shell.windows": "C:\\Windows\\System32\\bash.exe"
     "cSpell.words": [
-    "getcwd"
-  ],
-  "python.pythonPath": "C:\\Users\\vagrant\\envs\\algo3\\Scripts\\python.exe",
+      "daemonize",
+      "getcwd",
+      "nround",
+      "qresult",
+      "strftime"
+    ],
+  "python.pythonPath": "C:\\Users\\vagrant\\envs\\algo\\Scripts\\python.exe",
   "python.formatting.provider": "yapf"
 }
