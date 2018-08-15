@@ -116,7 +116,7 @@ class TargetProperties:
         for stream in self.streams:
             for splt in self.splits:
                 features_avgd[stream][splt] = features_avgd[stream][splt] / features_number[stream][splt]
-                new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features)
+                new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features[stream][splt])
                 target_scaled[stream][splt] = self._scale_feature(new_target)
 
         return target_scaled
