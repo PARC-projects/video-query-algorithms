@@ -18,11 +18,12 @@ FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 BASE_URL = "http://127.0.0.1:8000/"
 default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5}
 default_threshold = 0.8
+near_miss_default = 0.5
 streams = ('rgb', 'warped_optical_flow')
 
 logging.basicConfig(
     format=FORMAT,
-    level=logging.DEBUG,
+    level=logging.INFO,  # level=logging.DEBUG,
     handlers=[logging.FileHandler(LOG_NAME),
               logging.StreamHandler()])
 
@@ -32,7 +33,7 @@ def main():
     try:
         # check for updates
         query_updater = APIRepository(BASE_URL)
-        compute_matches(query_updater, BASE_URL, default_weights, default_threshold, streams)
+        compute_matches(query_updater, BASE_URL, default_weights, default_threshold, streams, near_miss_default)
     except Exception as e:
         logging.error(e)
     finally:

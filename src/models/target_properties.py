@@ -62,14 +62,22 @@ class TargetProperties:
 
     def features_of_confirmed_matches(self):
         # Interact with the API endpoint to get confirmed matches for the query
-        action = ["matches", "list"]
-        params = {"query_result__query": self.ticket["query_id"], "user_match": True}
-        confirmed_matches = self.client.action(self.schema, action, params=params)
+        page = 1
+        confirmed_matches = []
+        while page is not None:
+            action = ["matches", "list"]
+            params = {"query_result__query": self.ticket["query_id"],
+                      "user_match": True,
+                      "page": page
+                      }
+            results = self.client.action(self.schema, action, params=params)
+            confirmed_matches.extend(results["results"])
+            page = results["pagination"]["nextPage"]
 
         # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
         features_confirmed_matches = []
         splits_confirmed_matches = set()
-        for match in confirmed_matches["results"]:
+        for match in confirmed_matches:
             match_features, match_splits = self._get_clip_features(match["video_clip"])
             features_confirmed_matches.append(match_features)
             splits_confirmed_matches.update(match_splits)  # a set, so elements are added only if not already in splits
@@ -116,7 +124,7 @@ class TargetProperties:
         for stream in self.streams:
             for splt in self.splits:
                 features_avgd[stream][splt] = features_avgd[stream][splt] / features_number[stream][splt]
-                new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features)
+                new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features[stream][splt])
                 target_scaled[stream][splt] = self._scale_feature(new_target)
 
         return target_scaled

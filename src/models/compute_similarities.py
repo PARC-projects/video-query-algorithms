@@ -42,7 +42,8 @@ def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optic
 
     # get the feature dictionary for all search set video clips.
     # Dictionary structure is { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
-    candidates = _get_candidate_features(request_ticket["search_set"], client, schema, streams, target.splits, feature_name)
+    candidates = _get_candidate_features(request_ticket["search_set"], client, schema, streams, target.splits,
+                                         feature_name)
 
     # compute similarities and ensemble average them over the splits
     avgd_similarities = {}
@@ -65,7 +66,7 @@ def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optic
     return avgd_similarities
 
 
-def select_matches(similarities, weights, threshold=0.8, max_number_matches=20, near_miss=0.5):
+def select_matches(scores, threshold=0.8, max_number_matches=20, near_miss=0.5):
     """
     Find matches and near matches for review,
     half being above threshold and half for 1-(1+near_miss)*(1-threshold) < score < threshold.
@@ -73,21 +74,18 @@ def select_matches(similarities, weights, threshold=0.8, max_number_matches=20, 
     with the total of matches and near matches being equal to or less than max_number_matches.
 
     Conditions:
-    :param similarities:  { video_clip_id: {stream_type: [<avg similarity>, <number of items in ensemble>]} }
-    :param weights:  weights for similarities for each stream
+    :param scores:  scores for all video clips in search set
     :param threshold: real threshold, either the initial default or a new threshold_optimum from optimize_weights
     :param max_number_matches:  max number of matches the user wants to review.
     :param near_miss:  range of scores for near misses relative to the range (1-threshold) for hits
-    :return: match_indicator: {<video_clip_id>: <True or False>}
+    :return: match and near match disctionary: {<video_clip_id>: score}
     """
-    scores = compute_score(similarities, weights)
-
     lower_limit = 1 - (1 + near_miss)*(1 - threshold)
     match_candidates = {k: v for k, v in scores.items() if v >= threshold}
     near_match_candidates = {k: v for k, v in scores.items() if lower_limit <= v < threshold}
 
-    mscores = min(int(max_number_matches/2), len(match_candidates))
-    m_near_scores = min(max_number_matches - mscores, len(near_match_candidates))
+    mscores = min(max_number_matches/2, len(match_candidates)).__int__()
+    m_near_scores = min(max_number_matches - mscores, len(near_match_candidates)).__int__()
     match_scores = random.sample(match_candidates.items(), mscores)
     near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
 
@@ -177,8 +175,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
 
     # compute score at optimal weight and return
     new_weights = {streams[0]: 1.0, streams[1]: weight_optimum}
-    score_optimized = compute_score(similarities, new_weights)
-    return score_optimized, new_weights, threshold_optimum
+    return new_weights, threshold_optimum
 
 
 def _quad_fun(x, a0, b0, c0, w0, th0):

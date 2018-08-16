@@ -62,21 +62,26 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         }
         self.client.action(self.schema, action, params=params)
 
-    def create_query_result(self, query, nround, match_criterion, weights):
+    def create_query_result(self, query, nround, match_criterion, weights, streams):
+        # Make list out of dictionary of weights, in the order specified by streams
+        weights_values = [weights[stream] for k, stream in enumerate(streams)]
+        # Interact with API
         action = ["query-results", "create"]
         params = {
             "round": nround,
             "match_criterion": match_criterion,
-            "weights": weights,
+            "weights": weights_values,
             "query": query,
         }
         result = self.client.action(self.schema, action, params=params)
         return result["id"]
 
-    def change_process_state(self, query_id, process_state):
+    def change_process_state(self, query_id, process_state, message=None):
         action = ["queries", "partial_update"]
         params = {"id": query_id, "process_state": process_state}
         result = self.client.action(self.schema, action, params=params)
+        if message:
+            self.add_note(query_id, message)
         return result["process_state"]
 
     def add_note(self, query_id, note):
@@ -85,8 +90,11 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         params = {"id": query_id}
         result = self.client.action(self.schema, action, params=params)
         # add note to current notes
-        new_notes = result["notes"] + '\n\n' + note
+        if result["notes"]:
+            new_notes = result["notes"] + '\n\n' + note
+        else:
+            new_notes = note
         # update query object with new notes
         action = ["queries", "partial_update"]
         params = {"id": query_id, "notes": new_notes}
-        result = self.client.action(self.schema, action, params=params)
+        self.client.action(self.schema, action, params=params)
