@@ -170,6 +170,11 @@ def create_final_report(matches, ticket, query_updater, streams):
             reportwriter.writerow([video_clip_id, video_clip['video'], video_clip['clip'], score,
                                    video_clip['duration'], video_clip['notes']])
 
+    # write final report instance to database
+    action = ["final-reports", "create"]
+    params = {"query": ticket["query_id"], "file_name": file_name}
+    query_updater.client.action(query_updater.schema, action, params=params)
+
 def get_last_round(ticket, query_updater):
     page = 1
     last_round = {"round": 0}
