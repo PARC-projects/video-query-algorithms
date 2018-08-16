@@ -6,9 +6,6 @@ import csv
 from datetime import datetime
 import os
 
-ref_clip_id_error = "*** Error: A video clip corresponding to the reference time does not exist " \
-                    "in the database. ***"
-
 
 def compute_matches(query_updater, api_url, default_weights, default_threshold, streams, near_miss_fraction):
     """
@@ -115,7 +112,7 @@ def catch_errors(ticket):
     elif ticket["dynamic_target_adjustment"] is True:
         good_count = 0
         for match in ticket["matches"]:
-            if match["user_match"] == True:
+            if match["user_match"]:
                 good_count += 1
         if good_count == 0:  # user did not validate any matches, but we can recover from this error
             update = {"dynamic_target_adjustment": False}
@@ -170,10 +167,12 @@ def create_final_report(matches, ticket, query_updater, streams):
             reportwriter.writerow([video_clip_id, video_clip['video'], video_clip['clip'], score,
                                    video_clip['duration'], video_clip['notes']])
 
-    # write final report instance to database
-    action = ["final-reports", "create"]
-    params = {"query": ticket["query_id"], "file_name": file_name}
-    query_updater.client.action(query_updater.schema, action, params=params)
+    with open(file, 'r') as csvfile:
+        # write final report to API
+        action = ["queries", "partial_update"]
+        params = {"id": ticket["query_id"], "final_report_file": csvfile}
+        query_updater.client.action(query_updater.schema, action, params=params, encoding='multipart/form-data')
+
 
 def get_last_round(ticket, query_updater):
     page = 1
