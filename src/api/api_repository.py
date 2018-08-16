@@ -90,7 +90,10 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         params = {"id": query_id}
         result = self.client.action(self.schema, action, params=params)
         # add note to current notes
-        new_notes = result["notes"] + '\n\n' + note
+        if result["notes"]:
+            new_notes = result["notes"] + '\n\n' + note
+        else:
+            new_notes = note
         # update query object with new notes
         action = ["queries", "partial_update"]
         params = {"id": query_id, "notes": new_notes}

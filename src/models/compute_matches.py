@@ -40,11 +40,11 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
         query_updater.change_process_state(update_ticket["query_id"], 3)  # Change process state to 3: in progress
 
         # Check for query errors.  Change process_state to 5 if there is an error in the query, and exit loop
-        error_message, update = catch_errors(update_ticket)
+        error_message, corrections = catch_errors(update_ticket)
         if error_message:
             query_updater.change_process_state(update_ticket["query_id"], 5, message=error_message)
             continue
-        for k, v in update:
+        for k, v in corrections:
             update_ticket[k] = v
 
         # compute similarities with all clips in the search set
@@ -143,14 +143,7 @@ def create_final_report(matches, ticket, query_updater, streams):
     params = {"id": ticket["video_id"]}
     video = query_updater.client.action(query_updater.schema, action, params=params)
 
-    action = ["query-results", "list"]
-    params = {"query": ticket["query_id"]}
-    query_results = query_updater.client.action(query_updater.schema, action, params=params)["results"]
-    last_round = {"round": 0}
-    for round_object in query_results:
-        if round_object["round"] > last_round["round"]:
-            last_round = round_object
-    assert last_round["query"] == ticket["query_id"]
+    last_round = get_last_round(ticket, query_updater)
 
     action = ["search-sets", "read"]
     params = {"id": query["search_set_to_query"]}
@@ -176,3 +169,16 @@ def create_final_report(matches, ticket, query_updater, streams):
             video_clip = query_updater.client.action(query_updater.schema, action, params=params)
             reportwriter.writerow([video_clip_id, video_clip['video'], video_clip['clip'], score,
                                    video_clip['duration'], video_clip['notes']])
+
+def get_last_round(ticket, query_updater):
+    page = 1
+    last_round = {"round": 0}
+    while page is not None:
+        action = ["query-results", "list"]
+        params = {"query": ticket["query_id"], "page": page}
+        query_results = query_updater.client.action(query_updater.schema, action, params=params)
+        for round_object in query_results["results"]:
+            if round_object["round"] > last_round["round"]:
+                last_round = round_object
+        page = query_results["pagination"]["nextPage"]
+    return last_round
