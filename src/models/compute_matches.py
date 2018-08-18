@@ -128,7 +128,7 @@ def catch_no_matches_error(ticket, query_updater):
 
 def create_final_report(matches, ticket, query_updater, streams):
     # create final report that contains scores of all matches
-    file_name = 'final_report_query{}_{}.csv'.format(ticket["query_id"], datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
+    file_name = 'final_report_query_{}_{}.csv'.format(ticket["query_id"], datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
     file = os.path.join('../final_reports/', file_name)
 
     # Interact with the API endpoint to get query, video, query rounds, and search set info
