@@ -23,7 +23,8 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
                 "number_of_matches_to_review": number_of_matches
                 "tuning_update": for "revise" and "finalize" updates, QueryResult values for search tuning parameters
                                 for most recent round of the query
-                "matches": for "revise" updates, matches of previous round
+                "matches": for "revise" updates, matches of most recent round of the query
+                "user_matches": dictionary of {video_clip: user_match} entries from earlier rounds
                 "dynamic_target_adjustment": dynamic_target_adjustment
             }
     """
@@ -41,7 +42,7 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
         if error_message:
             query_updater.change_process_state(update_ticket["query_id"], 5, message=error_message)
             continue
-        for k, v in corrections:
+        for k, v in corrections:  # modify update_ticket with any corrections suggested by catch_errors()
             update_ticket[k] = v
 
         # compute similarities with all clips in the search set
@@ -62,41 +63,41 @@ def compute_matches(query_updater, api_url, default_weights, default_threshold, 
         else:
             raise Exception('update type is invalid')
 
-        # compute scores and matches (for the next round or final report) and add to the new query_result object
+        # pack new information into a new query_result database entity
+        if update_type == 'new':
+            new_round = 1
+        else:
+            new_round = update_ticket["tuning_update"]["round"] + 1
+        new_result_id = query_updater.create_query_result(update_ticket["query_id"], new_round, threshold, weights,
+                                                          streams)
+
+        # compute scores and matches (for the next round or final report)
         scores = compute_score(similarities, weights)
         if update_type == "finalize":
-            max_number_matches = float("inf")
-            near_miss = 0
+            max_number_matches = float("inf")  # add all matches to final report
+            near_miss = 0  # do not add any near misses to final report
         else:
             max_number_matches = update_ticket["number_of_matches_to_review"]
             near_miss = near_miss_fraction
-        matches = select_matches(scores, threshold, max_number_matches, near_miss)
+        matches = select_matches(scores, update_ticket, threshold, max_number_matches, near_miss)
 
         # catch errors that results in no matches being returned
         if not matches:
             catch_no_matches_error(update_ticket, query_updater)
             continue
 
-        # pack new information into a new query_result database entity
-        if update_type == 'new':
-            new_round = 1
-        else:
-            new_round = update_ticket["tuning_update"]["round"] + 1
-        new_result_id = query_updater.create_query_result(update_ticket["query_id"], new_round, threshold,
-                                                          weights, streams)
+        # add new match entities to database
+        add_matches_to_database(matches, update_ticket, new_result_id, query_updater)
 
-        # add match entities to database or to a final report
+        # Create a final report if update_type = "finalize" and change process_state to 7: Finalized
         # TODO: Add email notification to user
         if update_type == "finalize":
             create_final_report(matches, update_ticket, query_updater, streams)
-            # Change process_state to 7: Finalized
             query_updater.change_process_state(update_ticket["query_id"], 7)
             continue
-        else:
-            for video_clip, score in matches.items():
-                query_updater.create_match(new_result_id, score, None, video_clip)
-            # Change process_state to 4: Processed
-            query_updater.change_process_state(update_ticket["query_id"], 4)
+
+        # Change process_state to 4: Processed
+        query_updater.change_process_state(update_ticket["query_id"], 4)
 
 
 def catch_errors(ticket):
@@ -120,10 +121,20 @@ def catch_errors(ticket):
 
 
 def catch_no_matches_error(ticket, query_updater):
-    mround = ticket["tuning_update"]["round"] if ticket["tuning_update"] else 1
+    mround = ticket["tuning_update"]["round"] if "tuning_update" in ticket else 1
     error_message = "*** No matches were found for round {} of query {}! ***".format(mround, ticket["query_id"])
     query_updater.change_process_state(ticket["query_id"], 5, message=error_message)
     return
+
+
+def add_matches_to_database(matches, ticket, new_result_id, query_updater):
+    if "user_matches" in ticket:
+        user_matches = ticket["user_matches"]  # use user_match settings if any exist
+    else:
+        user_matches = {}
+    for video_clip, score in matches.items():
+        user_match = user_matches.get(str(video_clip))
+        query_updater.create_match(new_result_id, score, user_match, video_clip)
 
 
 def create_final_report(matches, ticket, query_updater, streams):
@@ -146,6 +157,10 @@ def create_final_report(matches, ticket, query_updater, streams):
     params = {"id": query["search_set_to_query"]}
     search_set = query_updater.client.action(query_updater.schema, action, params=params)
 
+    matches_by_user = {}
+    if "user_matches" in ticket:
+        matches_by_user = ticket["user_matches"]
+
     # write the csv file
     with open(file, 'x', newline='') as csvfile:
         reportwriter = csv.writer(csvfile)
@@ -159,12 +174,19 @@ def create_final_report(matches, ticket, query_updater, streams):
         reportwriter.writerow(['stream weights:', str(last_round["weights"])])
         reportwriter.writerow([''])
         # write out a row for each video clip that is a match
-        reportwriter.writerow(['video clip id', 'video pk', 'clip #', 'score', 'duration', 'notes'])
+        reportwriter.writerow(['Algorithm matches, user-identified matches, and user-identified non-matches'])
+        reportwriter.writerow(['clip #', 'match type', 'video pk', 'video clip id', 'score', 'duration', 'notes'])
         for video_clip_id, score in matches.items():
+            type = "Algorithm match"
+            if str(video_clip_id) in matches_by_user:
+                if matches_by_user[str(video_clip_id)]:
+                    type = "user-identified match"
+                else:
+                    type = "user-identified non-match"
             action = ["video-clips", "read"]
             params = {"id": video_clip_id}
             video_clip = query_updater.client.action(query_updater.schema, action, params=params)
-            reportwriter.writerow([video_clip_id, video_clip['video'], video_clip['clip'], score,
+            reportwriter.writerow([video_clip['clip'], type, video_clip['video'], video_clip_id, score,
                                    video_clip['duration'], video_clip['notes']])
 
     with open(file, 'r') as csvfile:

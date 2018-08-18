@@ -24,11 +24,12 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
                 "search_set": search set id
                 "number_of_matches_to_review": number_of_matches
                 "dynamic_target_adjustment": True or False, dynamically adjust target features for each round
-            For 'revise' queries:
+            For 'revise' and 'finalize' queries:
                 "tuning_update":  QueryResult record for latest round, with round number and
                                     match criterion and weights for tuning the search
-                "matches": for "revise" updates, matches of previous round,
+                "matches": matches of previous round,
                             i.e. with query_results field equal to that of previous round
+                "user_matches": dictionary of {video_clip: user_match} entries
             }
         """
         try:
