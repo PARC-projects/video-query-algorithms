@@ -143,7 +143,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
 
     # set up grid of weight & threshold
     weight_grid = np.arange(0.5, 2.5, 0.05)
-    threshold_grid = np.arange(0.6, 1.1, 0.025)
+    threshold_grid = np.arange(0.6, 1.1, 0.01)
 
     # compute loss function and find minimum.  Loss = 0 for correct scores, abs(score - th) for incorrect scores
     losses = 10 * np.ones([weight_grid.shape[0], threshold_grid.shape[0]])     # initialize loss matrix
