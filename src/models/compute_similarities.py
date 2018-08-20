@@ -26,6 +26,7 @@ def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optic
                                 analysis of the query, including the current round
                 "matches": for "revise" updates, matches of previous round
                 "dynamic_target_adjustment": dynamic_target_adjustment
+                "user_matches": dictionary of {video_clip: user_match} entries from previous round
             }
         base_url:   url of Video-Query-API
         streams:    DNN streams to include in similarity computations
@@ -66,7 +67,7 @@ def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optic
     return avgd_similarities
 
 
-def select_matches(scores, threshold=0.8, max_number_matches=20, near_miss=0.5):
+def select_matches(scores, ticket, threshold=0.8, max_number_matches=20, near_miss=0.5):
     """
     Find matches and near matches for review,
     half being above threshold and half for 1-(1+near_miss)*(1-threshold) < score < threshold.
@@ -75,21 +76,30 @@ def select_matches(scores, threshold=0.8, max_number_matches=20, near_miss=0.5):
 
     Conditions:
     :param scores:  scores for all video clips in search set
+    :param ticket:  request ticket
     :param threshold: real threshold, either the initial default or a new threshold_optimum from optimize_weights
     :param max_number_matches:  max number of matches the user wants to review.
     :param near_miss:  range of scores for near misses relative to the range (1-threshold) for hits
-    :return: match and near match disctionary: {<video_clip_id>: score}
+    :return: match and near match dictionary: {<video_clip_id>: score}
     """
     lower_limit = 1 - (1 + near_miss)*(1 - threshold)
     match_candidates = {k: v for k, v in scores.items() if v >= threshold}
     near_match_candidates = {k: v for k, v in scores.items() if lower_limit <= v < threshold}
 
+    # randomly select to stay within user defined max number of matches to evaluate
     mscores = min(max_number_matches/2, len(match_candidates)).__int__()
     m_near_scores = min(max_number_matches - mscores, len(near_match_candidates)).__int__()
     match_scores = random.sample(match_candidates.items(), mscores)
     near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
 
-    return dict(match_scores + near_match_scores)
+    # make sure reference clip is included
+    previous_user_evals = {ticket["ref_clip_id"]: scores[ticket["ref_clip_id"]]}
+    # add back in any video clips that were scored in any rounds for the given query and not included
+    if "user_matches" in ticket:
+        previous_user_evals.update({int(clip): scores[int(clip)] for clip in ticket["user_matches"]})
+    response = dict(match_scores + near_match_scores)
+    response.update(previous_user_evals)
+    return response
 
 
 def compute_score(similarities, weights):
@@ -133,7 +143,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
 
     # set up grid of weight & threshold
     weight_grid = np.arange(0.5, 2.5, 0.05)
-    threshold_grid = np.arange(0.6, 1.1, 0.025)
+    threshold_grid = np.arange(0.6, 1.1, 0.01)
 
     # compute loss function and find minimum.  Loss = 0 for correct scores, abs(score - th) for incorrect scores
     losses = 10 * np.ones([weight_grid.shape[0], threshold_grid.shape[0]])     # initialize loss matrix
@@ -148,6 +158,7 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
             losses[iw, ith] = loss / len(updated_matches)
     [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 
+    '''
     # fit losses around minimum to a parabola and fine tune the minimum, unless minimum is on the border of the grid
     xrange = []
     ydata = []
@@ -168,10 +179,14 @@ def optimize_weights(similarities, updated_matches, streams=('rgb', 'warped_opti
             popt, _ = curve_fit(_quad_fun, xrange, ydata)
             weight_optimum = popt[3]
             threshold_optimum = popt[4]
-        except:
+        except Exception as e:
+            print(e)
             # TODO: add explicit Jacobian to curve_fit above so exceptions are fewer to none
             weight_optimum = weight_grid[iw0]
             threshold_optimum = threshold_grid[ith0]
+    '''
+    weight_optimum = weight_grid[iw0]
+    threshold_optimum = threshold_grid[ith0]
 
     # compute score at optimal weight and return
     new_weights = {streams[0]: 1.0, streams[1]: weight_optimum}
