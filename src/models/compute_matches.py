@@ -107,7 +107,7 @@ def catch_errors(ticket):
         error_message = "*** Error: A video clip corresponding to the reference time does not exist " \
                     "in the database. ***"
     elif ticket["dynamic_target_adjustment"] is True and "matches" not in ticket:
-        error_message = '*** No similarities can be computed for query {}. Dynamic target adjustment is {} but there ' \
+        error_message = '*** Error: No similarities can be computed for query {}. Dynamic target adjustment is {} but there ' \
                         'are 0 matches computed for the previous round. Check database consistency for this query' \
             .format(ticket["query_id"], ticket["dynamic_target_adjustment"])
     elif ticket["dynamic_target_adjustment"] is True:
@@ -122,7 +122,7 @@ def catch_errors(ticket):
 
 def catch_no_matches_error(ticket, query_updater):
     mround = ticket["tuning_update"]["round"] if "tuning_update" in ticket else 1
-    error_message = "*** No matches were found for round {} of query {}! ***".format(mround, ticket["query_id"])
+    error_message = "*** Error: No matches were found for round {} of query {}! ***".format(mround, ticket["query_id"])
     query_updater.change_process_state(ticket["query_id"], 5, message=error_message)
     return
 
