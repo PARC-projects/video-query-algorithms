@@ -45,10 +45,10 @@ class Hyperparameter:
         # Loss = abs(score - th)*(1 + ballast) for false negative
         losses = 100 * np.ones([weight_grid.shape[0], threshold_grid.shape[0]])     # initialize loss matrix
         for iw, w in enumerate(weight_grid):
-            test = ticket.compute_scores({self.streams[0]: 1.0, self.streams[1]: w})
+            ticket.compute_scores({self.streams[0]: 1.0, self.streams[1]: w})
             for ith, th in enumerate(threshold_grid):
                 loss = 0
-                for video_clip_id, score in test.items():
+                for video_clip_id, score in ticket.scores.items():
                     if video_clip_id in match_status:
                         loss += (np.heaviside(score - th, 1) - match_status[video_clip_id]) * (score - th) \
                                 * (1 + match_status[video_clip_id]*self.ballast)

@@ -1,7 +1,7 @@
 """
 Public API to algorithms logic chain
 """
-from models import Ticket
+from models import Ticket, TargetClip
 
 
 def compute_matches(query_updates, hyperparameters):
@@ -22,7 +22,7 @@ def compute_matches(query_updates, hyperparameters):
             continue
         # Create a Ticket instance for the algorithm task to be done, and
         # change process state to 3: in progress
-        ticket = Ticket(update_object, query_updates.url, hyperparameters)
+        ticket = Ticket(update_object, query_updates.url)
         ticket.change_process_state(3)
 
         # Check for query errors.  Change process_state to 5 if there is an error in the query, and exit loop
@@ -35,6 +35,7 @@ def compute_matches(query_updates, hyperparameters):
             ticket.add_note(error_message)
 
         # compute similarities with all clips in the search set
+        ticket.target = TargetClip(ticket, hyperparameters)
         ticket.compute_similarities(hyperparameters)
 
         # for revise and finalize jobs, update weights and threshold based on current matches
@@ -76,7 +77,7 @@ def compute_matches(query_updates, hyperparameters):
         # TODO: Add email notification to user
         if update_type == "finalize":
             ticket.create_final_report(hyperparameters)
-            query_updates.change_process_state(ticket.query_id, 7)
+            ticket.change_process_state(7)
             continue
         else:
             ticket.change_process_state(4)

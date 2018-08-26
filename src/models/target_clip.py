@@ -7,6 +7,8 @@ class TargetClip:
         :param ticket: ticket instance of Ticket class
         :param hyperparameters: instance of class Hyperparameter, hyperparameters for deep learning ensemble
         """
+        self.client = ticket.client
+        self.schema = ticket.schema
         self.ticket = ticket
         self.hyperparameters = hyperparameters
         self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
@@ -23,7 +25,7 @@ class TargetClip:
         Output: self.target_features dictionary, of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
-        if not self.ticket["dynamic_target_adjustment"]:
+        if not self.ticket.dynamic_target_adjustment:
             self.target_features = self.scaled_ref_clip_features()
         else:
             # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
@@ -50,7 +52,7 @@ class TargetClip:
         confirmed_matches = []
         while page is not None:
             action = ["matches", "list"]
-            params = {"query_result__query": self.ticket["query_id"],
+            params = {"query_result__query": self.ticket.query_id,
                       "user_match": True,
                       "page": page
                       }

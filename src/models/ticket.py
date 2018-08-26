@@ -1,7 +1,6 @@
 """Make requests for Queries based on processing state
 """
 from api.authenticate import authenticate
-from models.target_clip import TargetClip
 import coreapi
 import os
 import csv
@@ -11,7 +10,7 @@ import random
 
 
 class Ticket:   # base_url is the api url.  The default is the dev default.
-    def __init__(self, update_object, api_url, hyperparameters):
+    def __init__(self, update_object, api_url):
         """
         :param update_object:
         json object:
@@ -29,8 +28,9 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "dynamic_target_adjustment": dynamic_target_adjustment
         }
         :param api_url is the url for the Video Query API
-        :param hyperparameters: instance of class Hyperparameter, hyperparameters for deep learning ensemble calcns.
         """
+        self.client = coreapi.Client(auth=authenticate(api_url))
+        self.schema = self.client.get(os.path.join(api_url, "docs"))
         self.query_id = update_object["query_id"]
         self.video_id = update_object["video_id"]
         self.ref_clip = update_object["ref_clip"]
@@ -46,12 +46,9 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             self.user_matches = update_object["user_matches"]
         else:
             self.user_matches = {}
-        self.url = api_url
-        self.target = TargetClip(self, hyperparameters)
+        self.target = None
         self.similarities = {}
         self.scores = {}
-        self.client = coreapi.Client(auth=authenticate(self.url))
-        self.schema = self.client.get(os.path.join(api_url, "docs"))
 
     def add_matches_to_database(self, new_result_id):
         for video_clip, score in self.matches.items():
@@ -81,15 +78,14 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
 
         # Check for no ref clip, most likely because reference time is not in video
         if self.ref_clip_id is None:
-            fatal_error_message = "*** Error: A video clip corresponding to the reference time does not exist " \
+            fatal_error_message = "*** Fatal Error: A video clip corresponding to the reference time does not exist " \
                             "in the database. ***"
 
         # Check for no matches on all but new jobs
         if job_type is not "new" and not self.matches:
-            fatal_error_message = '*** Error: No similarities can be computed for query {}. Dynamic target ' \
-                                  'adjustment is {} but there are 0 matches computed for the previous round. Check' \
-                                  ' database consistency for this query' \
-                .format(self.query_id, self.dynamic_target_adjustment)
+            fatal_error_message = '*** Fatal Error: This is not a new query but there are 0 matches computed for ' \
+                                  'the previous round. Cannot update without matches. Check database consistency ' \
+                                  'for this query'
 
         # On all but new jobs: Check for user matches if dynamic_target_adjustment is True.
         # Cannot adjust target without user matches to guide the adjustment.
@@ -289,9 +285,12 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         match_scores = random.sample(match_candidates.items(), mscores)
         near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
 
-        # make sure reference clip is included
-        previous_user_evals = {self.ref_clip_id: self.scores[self.ref_clip_id]}
-        # add back in any video clips that were scored in any rounds for the given query and not included
+        # make sure reference clip is included if it is in the search set for this ticket
+        if self.ref_clip_id in self.scores:
+            previous_user_evals = {self.ref_clip_id: self.scores[self.ref_clip_id]}
+        else:
+            previous_user_evals = {}
+        # Also add back in any video clips that were scored in any rounds for the given query and not included
         if self.user_matches:
             previous_user_evals.update({int(clip): self.scores[int(clip)] for clip in self.user_matches})
         self.matches = dict(match_scores + near_match_scores)
@@ -308,7 +307,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
 
         # create blank multi-level dictionary for results
         candidate_dict = {}
-        for stream in hyperparameters["streams"]:
+        for stream in hyperparameters.streams:
             candidate_dict[stream] = {}
             for split in splits:
                 candidate_dict[stream][split] = {}
@@ -319,6 +318,6 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             feature_vector = tf["feature_vector"]
             name = tf["name"]
             nclip = tf["video_clip_id"]
-            if tf_stream in hyperparameters["streams"] and name == hyperparameters["feature_name"] and fsplit in splits:
+            if tf_stream in hyperparameters.streams and name == hyperparameters.feature_name and fsplit in splits:
                 candidate_dict[tf_stream][fsplit][nclip] = feature_vector
         return candidate_dict

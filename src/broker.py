@@ -18,11 +18,11 @@ LOG_NAME = 'logs/query_broker_{0}.log'.format(
 FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 BASE_URL = "http://127.0.0.1:8000/"
 # hyperparameter defaults
-default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5},
-default_threshold = 0.8,
-near_miss_default = 0.5,
-streams = ('rgb', 'warped_optical_flow'),
-feature_name = 'global_pool',
+default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5}
+default_threshold = 0.8
+near_miss_default = 0.5
+streams = ('rgb', 'warped_optical_flow')
+feature_name = 'global_pool'
 ballast = 0.3
 
 logging.basicConfig(
