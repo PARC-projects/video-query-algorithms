@@ -10,16 +10,20 @@ from datetime import datetime
 import logging
 from api.api_repository import APIRepository
 from models.compute_matches import compute_matches
+from models import Hyperparameter
 
 LOOP_EXECUTION_TIME = 5.0  # In seconds
 LOG_NAME = 'logs/query_broker_{0}.log'.format(
     datetime.now().strftime("%Y_%m_%d"))
 FORMAT = '%(asctime)s; %(levelname)s; {%(module)s}; [%(funcName)s] %(message)s'
 BASE_URL = "http://127.0.0.1:8000/"
-default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5}
-default_threshold = 0.8
-near_miss_default = 0.5
-streams = ('rgb', 'warped_optical_flow')
+# hyperparameter defaults
+default_weights = {'rgb': 1.0, 'warped_optical_flow': 1.5},
+default_threshold = 0.8,
+near_miss_default = 0.5,
+streams = ('rgb', 'warped_optical_flow'),
+feature_name = 'global_pool',
+ballast = 0.3
 
 logging.basicConfig(
     format=FORMAT,
@@ -32,8 +36,10 @@ def main():
     # Execute long pooling loop
     try:
         # check for updates
-        query_updater = APIRepository(BASE_URL)
-        compute_matches(query_updater, BASE_URL, default_weights, default_threshold, streams, near_miss_default)
+        query_updates = APIRepository(BASE_URL)
+        hyperparameters = Hyperparameter(default_weights, default_threshold, ballast, near_miss_default, streams,
+                                         feature_name)
+        compute_matches(query_updates, hyperparameters)
     except Exception as e:
         logging.error(e)
     finally:

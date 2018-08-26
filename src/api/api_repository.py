@@ -1,4 +1,4 @@
-"""Make requests for Queries based on processing state
+"""Make requests for Queries to process based on processing state
 """
 import logging
 from api.authenticate import authenticate
@@ -12,6 +12,7 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
         # Setup authenticated API client
         self.client = coreapi.Client(auth=authenticate(base_url))
         self.schema = self.client.get(os.path.join(base_url, "docs"))
+        self.url = base_url
 
     def get_status(self):
         """Request queries that meet processing_state requirements
@@ -52,50 +53,3 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
     def _get_query_ready_for_finalize(self):
         action = ["query-state", "compute-finalize", "list"]
         return self.client.action(self.schema, action)
-
-    def create_match(self, qresult, score, user_match, video_clip):
-        action = ["matches", "create"]
-        params = {
-            "query_result": qresult,
-            "score": score,
-            "user_match": user_match,
-            "video_clip": video_clip,
-        }
-        self.client.action(self.schema, action, params=params)
-
-    def create_query_result(self, query, nround, match_criterion, weights, streams):
-        # Make list out of dictionary of weights, in the order specified by streams
-        weights_values = [weights[stream] for k, stream in enumerate(streams)]
-        # Interact with API
-        action = ["query-results", "create"]
-        params = {
-            "round": nround,
-            "match_criterion": match_criterion,
-            "weights": weights_values,
-            "query": query,
-        }
-        result = self.client.action(self.schema, action, params=params)
-        return result["id"]
-
-    def change_process_state(self, query_id, process_state, message=None):
-        action = ["queries", "partial_update"]
-        params = {"id": query_id, "process_state": process_state}
-        result = self.client.action(self.schema, action, params=params)
-        if message:
-            self.add_note(query_id, message)
-        return result["process_state"]
-
-    def add_note(self, query_id, note):
-        # Get current notes by interacting with API
-        action = ["queries", "read"]
-        params = {"id": query_id}
-        result = self.client.action(self.schema, action, params=params)
-        # add note to current notes
-        if result["notes"]:
-            new_notes = result["notes"] + '\n\n' + note
-        else:
-            new_notes = note
-        # update query object with new notes
-        action = ["queries", "partial_update"]
-        params = {"id": query_id, "notes": new_notes}
-        self.client.action(self.schema, action, params=params)

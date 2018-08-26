@@ -1,49 +1,33 @@
 import numpy as np
 
 
-class TargetProperties:
-    def __init__(self, ticket, client, schema, streams, feature_name):
+class TargetClip:
+    def __init__(self, ticket, hyperparameters):
         """
-        :param ticket: ticket for computing target features
-        :param client: API client for coreapi calls
-        :param schema: API schema for coreapi calls
-        :param streams: names of distinct DNN streams to include
-        :param feature_name: name of embedded DNN feature for the instance of this class
-        ticket:
-            {
-                "query_id": query["id"],
-                "video_id": query["video"],
-                "ref_clip": reference clip number,
-                "ref_clip_id": pk for the reference video clip,
-                "search_set": search set id
-                "number_of_matches_to_review": number_of_matches
-                "tuning_update": QueryResult values for search tuning parameters for most recent
-                                analysis of the query, including the current round
-                "matches": for "revise" updates, matches of previous round
-                "dynamic_target_adjustment": dynamic_target_adjustment
-            }
+        :param ticket: ticket instance of Ticket class
+        :param hyperparameters: instance of class Hyperparameter, hyperparameters for deep learning ensemble
         """
         self.ticket = ticket
-        self.client = client
-        self.schema = schema
-        self.streams = streams
-        self.feature_name = feature_name
-        self.ref_clip_features, self.splits = self._get_clip_features(self.ticket["ref_clip_id"])
+        self.hyperparameters = hyperparameters
+        self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
         self.target_features = {}
+        self.client = self.ticket.client
+        self.schema = self.ticket.schema
 
     def compute_target_features(self):
         """
-        Method to compute dictionary of target features for the current state of query with id = ticket["query_id"].
+        Method to compute dictionary of target features for the current state of query with id = ticket.query_id.
         Depending on dynamic target adjustment setting, either choose ref clip as the target or adjust the target
         based on all user confirmed matches.
 
-        Output: self.target_features, also of the form { <stream type>: {<split #>:[<feature>], ...} }
+        Output: self.target_features dictionary, of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
         if not self.ticket["dynamic_target_adjustment"]:
             self.target_features = self.scaled_ref_clip_features()
         else:
             # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
+            # Also return all splits present in the feature dictionaries
             features_4_matches, splits_4_matches = self.features_of_confirmed_matches()
 
             # Compute the new target using dynamic target adjustment, unless there are no confirmed matches
@@ -88,6 +72,7 @@ class TargetProperties:
         """
         :param list_of_feature_dictionaries: Clip features dictionaries with
                                              entries { <stream type>: {<split #>:[<feature>], ...} }
+        :param splits: splits for which dynamic target adjustment will be done
         Procedure:
         for each stream:
             for each split:
@@ -103,7 +88,7 @@ class TargetProperties:
         features_avgd = {}
         features_number = {}
         target_scaled = {}
-        for stream in self.streams:
+        for stream in self.hyperparameters.streams:
             features_avgd[stream] = {}
             features_number[stream] = {}
             target_scaled[stream] = {}
@@ -121,8 +106,8 @@ class TargetProperties:
         # divide by number of features of each type to get the average, and compare with ref clip feature.
         # Compute target_feature as the element-wise minimum of the ref clip feature and features_avgd
         # scale target_feature before returning it
-        for stream in self.streams:
-            for splt in self.splits:
+        for stream in self.hyperparameters.streams:
+            for splt in splits:
                 features_avgd[stream][splt] = features_avgd[stream][splt] / features_number[stream][splt]
                 new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features[stream][splt])
                 target_scaled[stream][splt] = self._scale_feature(new_target)
@@ -136,7 +121,7 @@ class TargetProperties:
         """
         results = {}
         splits = set()
-        for stream_type in self.streams:
+        for stream_type in self.hyperparameters.streams:
             results[stream_type] = {}
 
         # Interact with the API endpoint to get features for the video clip
@@ -148,11 +133,12 @@ class TargetProperties:
         for feature_object in feature_dictionaries_as_a_list:
             stream_type = feature_object["dnn_stream_id"]  # this is actually the stream name, not the primary key
             name = feature_object["name"]
-            if stream_type in self.streams and name == self.feature_name:
+            if stream_type in self.hyperparameters.streams and name == self.hyperparameters.feature_name:
                 fsplit = feature_object["dnn_stream_split"]
                 splits.add(fsplit)  # splits is a set, so only new splits get added
                 results[stream_type][fsplit] = feature_object["feature_vector"]
         return results, splits
 
-    def _scale_feature(self, f):
+    @staticmethod
+    def _scale_feature(f):
         return f / np.dot(f, f)
