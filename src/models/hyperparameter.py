@@ -12,6 +12,8 @@ class Hyperparameter:
         self.streams = streams
         self.feature_name = feature_name
         self.ballast = ballast
+        self.weight_grid = np.arange(0.5, 2.5, 0.05)
+        self.threshold_grid = np.arange(0.5, 1.1, 0.02)
 
     def optimize_weights(self, ticket):
         """
@@ -28,65 +30,71 @@ class Hyperparameter:
            remainder are for streams 2, 3, ....
            weight for rgb stream is set equal to one, since it otherwise would get normalized out
         """
+        # get info about matches in the ticket
         match_status = {}
         for match in ticket.matches:
-            if match["user_match"]:
+            if match["user_match"] is not None:
                 match_status[match['video_clip']] = match["user_match"]  # For user_match == True or False
             else:
                 match_status[match['video_clip']] = match["is_match"]  # For clips the user did not evaluate
-
-        # set up grid of weight & threshold
-        weight_grid = np.arange(0.5, 2.5, 0.05)
-        threshold_grid = np.arange(0.6, 1.1, 0.01)
 
         # compute loss function and find minimum.
         # Loss = 0 for correct scores
         # Loss = abs(score - th) for false positive
         # Loss = abs(score - th)*(1 + ballast) for false negative
-        losses = 100 * np.ones([weight_grid.shape[0], threshold_grid.shape[0]])     # initialize loss matrix
-        for iw, w in enumerate(weight_grid):
+        losses = 100 * np.ones([self.weight_grid.shape[0], self.threshold_grid.shape[0]])     # initialize loss matrix
+        for iw, w in enumerate(self.weight_grid):
             ticket.compute_scores({self.streams[0]: 1.0, self.streams[1]: w})
-            for ith, th in enumerate(threshold_grid):
+            for ith, th in enumerate(self.threshold_grid):
                 loss = 0
-                for video_clip_id, score in ticket.scores.items():
-                    if video_clip_id in match_status:
-                        loss += (np.heaviside(score - th, 1) - match_status[video_clip_id]) * (score - th) \
-                                * (1 + match_status[video_clip_id]*self.ballast)
+                for video_clip_id in match_status:
+                    score = ticket.scores[video_clip_id]
+                    loss += (np.heaviside(score - th, 1) - match_status[video_clip_id]) * (score - th) \
+                        * (1 + match_status[video_clip_id]*self.ballast)
                 losses[iw, ith] = loss / len(match_status)
         [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
 
-        '''
         # fit losses around minimum to a parabola and fine tune the minimum, unless minimum is on the border of the grid
-        xrange = []
-        ydata = []
-        if iw0 == 0 or ith0 == 0 or iw0 == len(weight_grid)-1 or ith0 == len(threshold_grid)-1:
-            weight_optimum = weight_grid[iw0]
-            threshold_optimum = threshold_grid[ith0]
+        if iw0 == 0 or ith0 == 0 or iw0 == len(self.weight_grid)-1 or ith0 == len(self.threshold_grid)-1:
+            weight_optimum = self.weight_grid[iw0]
+            threshold_optimum = self.threshold_grid[ith0]
         else:
-            xrange.append((weight_grid[iw0 - 1], weight_grid[iw0], weight_grid[iw0], weight_grid[iw0],
-                           weight_grid[iw0 + 1]))
-            xrange.append((threshold_grid[ith0], threshold_grid[ith0 - 1], threshold_grid[ith0], threshold_grid[ith0+1],
-                           threshold_grid[ith0]))
-            ydata.append(losses[iw0 - 1, ith0])
-            ydata.append(losses[iw0, ith0 - 1])
-            ydata.append(losses[iw0, ith0])
-            ydata.append(losses[iw0, ith0 + 1])
-            ydata.append(losses[iw0 + 1, ith0])
-            try:
-                popt, _ = curve_fit(_quad_fun, xrange, ydata)
-                weight_optimum = popt[3]
-                threshold_optimum = popt[4]
-            except Exception as e:
-                print(e)
-                # TODO: add explicit Jacobian to curve_fit above so exceptions are fewer to none
-                weight_optimum = weight_grid[iw0]
-                threshold_optimum = threshold_grid[ith0]
-        '''
-        self.threshold = threshold_grid[ith0]
-        self.weights = {self.streams[0]: 1.0, self.streams[1]: weight_grid[iw0]}
+            weight_optimum, threshold_optimum = self.fine_tune(iw0, ith0, losses)
 
-    '''
-        def _quad_fun(self, x, a0, b0, c0, w0, th0):
-            # function provided to scipy.optimize.curve_fit
-            return a0 * (x[0] - w0) ** 2 + b0 * (x[1] - th0) ** 2 + c0
-    '''
+        self.threshold = threshold_optimum
+        self.weights = {self.streams[0]: 1.0, self.streams[1]: weight_optimum}
+
+    def fine_tune(self, iw0, ith0, losses):
+        xrange = [(self.weight_grid[iw0 - 1], self.weight_grid[iw0], self.weight_grid[iw0 + 1]),
+                  (self.threshold_grid[ith0 - 1], self.threshold_grid[ith0], self.threshold_grid[ith0 + 1])]
+        ydata = [losses[iw0 - 1, ith0], losses[iw0, ith0 - 1], losses[iw0, ith0], losses[iw0, ith0 + 1],
+                 losses[iw0 + 1, ith0]]
+        return self._quad_fit(xrange, ydata)
+
+    @staticmethod
+    def _quad_fit(x, y):
+        # determine the parameters of a0 * (x[0] - w0) ** 2 + b0 * (x[1] - th0) ** 2 + c0 that fit the five ydata values
+        w0 = (y[4]-y[0]) * x[0][1]**2 + (y[2]-y[4]) * x[0][0]**2 - (y[2]-y[0]) * x[0][2]**2
+        w0 = 0.5 * w0 / ((y[4]-y[0]) * x[0][1] + (y[2]-y[4]) * x[0][0] - (y[2]-y[0]) * x[0][2])
+        a0 = (y[2]-y[0]) / ((x[0][1] - w0)**2 - (x[0][0] - w0)**2)
+        th0 = (y[3]-y[1]) * x[1][1]**2 + (y[2]-y[3]) * x[1][0]**2 - (y[2]-y[1]) * x[1][2]**2
+        w0 = 0.5 * w0 / ((y[3]-y[1]) * x[1][1] + (y[2]-y[3]) * x[1][0] - (y[2]-y[1]) * x[1][2])
+        b0 = (y[2]-y[1]) / ((x[1][1] - th0)**2 - (x[1][0] - th0)**2)
+        c0 = y[2] - a0 * (x[0][1] - w0)**2 - b0 * (x[1][1] - th0)**2
+
+        # for flat y values, round-off errors could move w0 or th0 out of the range of x, so we correct for that
+        w0 = min(w0, x[0][2])
+        w0 = max(w0, x[0][0])
+        th0 = min(th0, x[1][2])
+        th0 = max(th0, x[1][0])
+
+        # make sure fit is good
+        eps = 10**-6
+        y0 = a0 * (x[0][0]-w0)**2 + b0 * (x[1][1]-th0)**2 + c0
+        y1 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][0] - th0) ** 2 + c0
+        y2 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][1] - th0) ** 2 + c0
+        y3 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][2] - th0) ** 2 + c0
+        y4 = a0 * (x[0][2] - w0) ** 2 + b0 * (x[1][1] - th0) ** 2 + c0
+        assert (abs(y0) + abs(y1) + abs(y2) + abs(y3) + abs(y4)) > eps
+
+        return w0, th0
