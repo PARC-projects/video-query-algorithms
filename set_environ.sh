@@ -4,3 +4,4 @@ export TSN_ENVIRON='TSN'
 export API_CLIENT_USERNAME='torres'
 export API_CLIENT_PASSWORD='fetorres'
 export BROKER_THREADING='True'
+export COMPUTE_EPS=.000003

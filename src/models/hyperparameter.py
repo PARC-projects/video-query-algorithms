@@ -1,4 +1,7 @@
 import numpy as np
+import os
+
+eps_threshold = float(os.environ["COMPUTE_EPS"])
 
 
 class Hyperparameter:
@@ -61,7 +64,7 @@ class Hyperparameter:
         else:
             weight_optimum, threshold_optimum = self.fine_tune(iw0, ith0, losses)
 
-        self.threshold = threshold_optimum - 3e-6  # add a small buffer to account for round-off errors
+        self.threshold = threshold_optimum - eps_threshold  # add a small buffer to account for round-off errors
         self.weights = {self.streams[0]: 1.0, self.streams[1]: weight_optimum}
 
     def fine_tune(self, iw0, ith0, losses):
