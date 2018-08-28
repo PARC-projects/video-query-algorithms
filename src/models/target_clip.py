@@ -1,4 +1,5 @@
 import numpy as np
+from models.target_bootstrapper import target_bootstrapper
 
 
 class TargetClip:
@@ -53,7 +54,6 @@ class TargetClip:
         while page is not None:
             action = ["matches", "list"]
             params = {"query_result__query": self.ticket.query_id,
-                      "user_match": True,
                       "page": page
                       }
             results = self.client.action(self.schema, action, params=params)
@@ -61,60 +61,28 @@ class TargetClip:
             page = results["pagination"]["nextPage"]
 
         # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
-        features_confirmed_matches = []
+        # Make sure to not load features from the same video clip more than once
+        confirmed_matches_features = []
         splits_confirmed_matches = set()
+        video_clips_seen = []
         for match in confirmed_matches:
-            match_features, match_splits = self._get_clip_features(match["video_clip"])
-            features_confirmed_matches.append(match_features)
-            splits_confirmed_matches.update(match_splits)  # a set, so elements are added only if not already in splits
+            if match["user_match"] and match["video_clip"] not in video_clips_seen:
+                match_features, match_splits = self._get_clip_features(match["video_clip"])
+                confirmed_matches_features.append(match_features)
+                # splits_confirmed_matches is a set, so elements are added only if not already in splits
+                splits_confirmed_matches.update(match_splits)
+            video_clips_seen.append(match["video_clip"])
 
-        return features_confirmed_matches, splits_confirmed_matches
+        return confirmed_matches_features, splits_confirmed_matches
 
     def dynamic_target_adjustment(self, list_of_feature_dictionaries, splits):
         """
         :param list_of_feature_dictionaries: Clip features dictionaries with
                                              entries { <stream type>: {<split #>:[<feature>], ...} }
         :param splits: splits for which dynamic target adjustment will be done
-        Procedure:
-        for each stream:
-            for each split:
-                average features for all confirmed matches;
-                for each x_i in averaged_feature:
-                    if x_i < ref_clip_feature_i:
-                        target_i = x_i
-                    else:
-                        target_i = ref_feature_i
-                add averaged_feature to target_features
+        returns dictionary of new target features in the format { <stream type>: {<split #>:[<target feature>], ...} }
         """
-        # First initialize a dictionary for the averaged features and the number of features
-        features_avgd = {}
-        features_number = {}
-        target_scaled = {}
-        for stream in self.hyperparameters.streams:
-            features_avgd[stream] = {}
-            features_number[stream] = {}
-            target_scaled[stream] = {}
-            for splt in splits:
-                features_avgd[stream][splt] = np.array(0)
-                features_number[stream][splt] = 0
-
-        # add all features for each stream:split, and count how many features of each type
-        for feature_dictionary in list_of_feature_dictionaries:  # one feature_dictionary for each match
-            for stream_type, split_features in feature_dictionary.items():
-                for split, feature in split_features.items():
-                    features_avgd[stream_type][split] = features_avgd[stream_type][split] + np.asarray(feature)
-                    features_number[stream_type][split] += 1
-
-        # divide by number of features of each type to get the average, and compare with ref clip feature.
-        # Compute target_feature as the element-wise minimum of the ref clip feature and features_avgd
-        # scale target_feature before returning it
-        for stream in self.hyperparameters.streams:
-            for splt in splits:
-                features_avgd[stream][splt] = features_avgd[stream][splt] / features_number[stream][splt]
-                new_target = np.minimum(features_avgd[stream][splt], self.ref_clip_features[stream][splt])
-                target_scaled[stream][splt] = self._scale_feature(new_target)
-
-        return target_scaled
+        return target_bootstrapper(list_of_feature_dictionaries, splits, self.hyperparameters.streams)
 
     def _get_clip_features(self, clip_id):
         """
