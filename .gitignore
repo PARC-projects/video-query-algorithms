@@ -7,8 +7,6 @@ set_environ.sh
 __pycache__/
 *.py[cod]
 *$py.class
-!target_bootstrapper.pyc
-target_bootstrapper.py
 
 # C extensions
 *.so
