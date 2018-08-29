@@ -23,6 +23,7 @@ default_threshold = 0.8
 near_miss_default = 0.5
 streams = ('rgb', 'warped_optical_flow')
 feature_name = 'global_pool'
+mu = 0.05
 # ballast should be >=0 and <1.
 # False positives penalty reduced by (1-ballast), false negative penalty increased by (1+ballast)
 ballast = 0.3
@@ -40,7 +41,7 @@ def main():
         # check for updates
         query_updates = APIRepository(BASE_URL)
         hyperparameters = Hyperparameter(default_weights, default_threshold, ballast, near_miss_default, streams,
-                                         feature_name)
+                                         feature_name, mu)
         compute_matches(query_updates, hyperparameters)
     except Exception as e:
         logging.error(e)
