@@ -191,7 +191,7 @@ class TargetClip:
                 X = np.asarray(xfeatures[stream_type][split])
                 Y = np.asarray(yfeatures[stream_type][split])
                 tr_YYT = np.trace(np.matmul(Y, Y.T))
-                scale = self.hyperparameters.mu / tr_YYT / X.shape[0]
+                scale = self.hyperparameters.mu / tr_YYT
                 M = np.eye(Y.shape[1]) + scale * np.matmul(Y.T, Y)
                 M_inv = np.linalg.inv(M)
                 B = np.matmul(X, np.matmul(M_inv, X.T))
