@@ -96,7 +96,7 @@ class TargetClip:
         invalidated_matches_features = []
         splits_invalidated_matches = set()
         for match in invalidated_matches:
-            if match["user_match"] is not True:
+            if match["user_match"] is False:
                 match_features, match_splits = self._get_clip_features(match["video_clip"])
                 invalidated_matches_features.append(match_features)
                 # splits_confirmed_matches is a set, so elements are added only if not already in splits
