@@ -4,7 +4,7 @@ import coreapi
 from api.authenticate import authenticate
 import random
 import os
-from models.target_properties import TargetProperties
+from models.target_clip import TargetClip
 
 
 def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optical_flow'), feature_name='global_pool'):
@@ -36,7 +36,7 @@ def compute_similarities(request_ticket, base_url, streams=('rgb', 'warped_optic
     client = coreapi.Client(auth=authenticate(base_url))
     schema = client.get(os.path.join(base_url, "docs"))
 
-    target = TargetProperties(request_ticket, client, schema, streams, feature_name)
+    target = TargetClip(request_ticket, client, schema, streams, feature_name)
     # get the feature dictionary for the target.
     # Dictionary structure is { <stream type>: {<split #>: [<ref feature>], ...} }
     target.compute_target_features()
