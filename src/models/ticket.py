@@ -7,6 +7,7 @@ import csv
 from datetime import datetime
 import numpy as np
 import random
+from time import sleep
 
 
 class Ticket:   # base_url is the api url.  The default is the dev default.
@@ -61,7 +62,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         # Get current notes by interacting with API
         action = ["queries", "read"]
         params = {"id": self.query_id}
-        result = self.client.action(self.schema, action, params=params)
+        result = self._request(action, params)
         # add note to current notes
         if result["notes"]:
             new_notes = result["notes"] + '\n\n' + note
@@ -71,7 +72,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         # update query object with new notes
         action = ["queries", "partial_update"]
         params = {"id": self.query_id, "notes": new_notes}
-        self.client.action(self.schema, action, params=params)
+        self._request(action, params)
 
     def catch_errors(self, job_type):
         # catch errors, create error messages, and create corrections if possible
@@ -107,7 +108,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
     def change_process_state(self, process_state, message=None):
         action = ["queries", "partial_update"]
         params = {"id": self.query_id, "process_state": process_state}
-        result = self.client.action(self.schema, action, params=params)
+        result = self._request(action, params)
         if message:
             self.add_note(message)
         return result["process_state"]
@@ -176,17 +177,17 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         # Interact with the API endpoint to get query, video, query rounds, and search set info
         action = ["queries", "read"]
         params = {"id": self.query_id}
-        query = self.client.action(self.schema, action, params=params)
+        query = self._request(action, params)
 
         action = ["videos", "read"]
         params = {"id": self.video_id}
-        video = self.client.action(self.schema, action, params=params)
+        video = self._request(action, params)
 
         last_round = self.get_last_round()
 
         action = ["search-sets", "read"]
         params = {"id": query["search_set_to_query"]}
-        search_set = self.client.action(self.schema, action, params=params)
+        search_set = self._request(action, params)
 
         matches_by_user = {}
         if self.user_matches:
@@ -216,7 +217,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                         match_type = "user-identified non-match"
                 action = ["video-clips", "read"]
                 params = {"id": video_clip_id}
-                video_clip = self.client.action(self.schema, action, params=params)
+                video_clip = self._request(action, params)
                 reportwriter.writerow([video_clip['clip'], match_type, video_clip['video'], video_clip_id, score,
                                        video_clip['duration'], video_clip['notes']])
 
@@ -224,7 +225,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             # write final report to API
             action = ["queries", "partial_update"]
             params = {"id": self.query_id, "final_report_file": csvfile}
-            self.client.action(self.schema, action, params=params, encoding='multipart/form-data')
+            self._post_file(action, params)
 
     def create_match(self, qresult, score, user_match, video_clip):
         action = ["matches", "create"]
@@ -234,7 +235,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "user_match": user_match,
             "video_clip": video_clip,
         }
-        self.client.action(self.schema, action, params=params)
+        self._request(action, params)
 
     def create_query_result(self, nround, hyperparameters):
         # Make list out of dictionary of weights, in the order specified by streams
@@ -247,7 +248,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "weights": weights_values,
             "query": self.query_id,
         }
-        result = self.client.action(self.schema, action, params=params)
+        result = self._request(action, params)
         return result["id"]
 
     def get_last_round(self):
@@ -256,7 +257,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         while page is not None:
             action = ["query-results", "list"]
             params = {"query": self.query_id, "page": page}
-            query_results = self.client.action(self.schema, action, params=params)
+            query_results = self._request(action, params)
             for round_object in query_results["results"]:
                 if round_object["round"] > last_round["round"]:
                     last_round = round_object
@@ -292,7 +293,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             previous_user_evals = {self.ref_clip_id: self.scores[self.ref_clip_id]}
         else:
             previous_user_evals = {}
-        # Also add back in any video clips that were scored in any rounds for the given query and not included
+        # Also add back in any video clips that were scored in the previous round for the given query and not included
         if self.user_matches:
             previous_user_evals.update({int(clip): self.scores[int(clip)] for clip in self.user_matches})
         self.matches = dict(match_scores + near_match_scores)
@@ -305,7 +306,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         # Interact with the API endpoint to get features for the query's search set
         action = ["search-sets", "features"]
         params = {"id": self.search_set}
-        features = self.client.action(self.schema, action, params=params)
+        features = self._request(action, params)
 
         # create blank multi-level dictionary for results
         candidate_dict = {}
@@ -323,3 +324,19 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             if tf_stream in hyperparameters.streams and name == hyperparameters.feature_name and fsplit in splits:
                 candidate_dict[tf_stream][fsplit][nclip] = feature_vector
         return candidate_dict
+
+    def _request(self, action, params):
+        while True:
+            try:
+                return self.client.action(self.schema, action, params=params)
+            except ConnectionError:
+                sleep(0.05)
+                print('Try again: action = {}, params = {}'.format(action, params))
+
+    def _post_file(self, action, params):
+        while True:
+            try:
+                return self.client.action(self.schema, action, params=params, encoding="multipart/form-data")
+            except ConnectionError:
+                sleep(0.05)
+                print('Try again: action = {}, params = {}'.format(action, params))

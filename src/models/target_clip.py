@@ -1,4 +1,5 @@
 import numpy as np
+from time import sleep
 
 
 class TargetClip:
@@ -63,7 +64,7 @@ class TargetClip:
             params = {"query_result": self.ticket.tuning_update["id"],
                       "page": page
                       }
-            results = self.client.action(self.schema, action, params=params)
+            results = self._request(action, params)
             confirmed_matches.extend(results["results"])
             page = results["pagination"]["nextPage"]
 
@@ -87,7 +88,7 @@ class TargetClip:
             params = {"query_result": self.ticket.tuning_update["id"],
                       "page": page
                       }
-            results = self.client.action(self.schema, action, params=params)
+            results = self._request(action, params)
             invalidated_matches.extend(results["results"])
             page = results["pagination"]["nextPage"]
 
@@ -217,7 +218,7 @@ class TargetClip:
         # Interact with the API endpoint to get features for the video clip
         action = ["video-clips", "features"]
         params = {"id": clip_id}
-        feature_dictionaries_as_a_list = self.client.action(self.schema, action, params=params)
+        feature_dictionaries_as_a_list = self._request(action, params)
 
         # fill in the feature dictionary for the clip with feature vectors from API feature_dictionaries_as_a_list
         for feature_object in feature_dictionaries_as_a_list:
@@ -228,6 +229,14 @@ class TargetClip:
                 splits.add(fsplit)  # splits is a set, so only new splits get added
                 results[stream_type][fsplit] = feature_object["feature_vector"]
         return results, splits
+
+    def _request(self, action, params):
+        while True:
+            try:
+                return self.client.action(self.schema, action, params=params)
+            except ConnectionError:
+                sleep(0.05)
+                print('Try again: action = {}, params = {}'.format(action, params))
 
     @staticmethod
     def _scale_feature(f):
