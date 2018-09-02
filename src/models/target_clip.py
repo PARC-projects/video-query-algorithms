@@ -1,5 +1,10 @@
+from requests import ConnectionError
 import numpy as np
 from time import sleep
+import random
+import os
+
+random.seed(a=int(os.environ["RANDOM_SEED"]))
 
 
 class TargetClip:
@@ -14,8 +19,6 @@ class TargetClip:
         self.hyperparameters = hyperparameters
         self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
         self.target_features = {}
-        self.client = self.ticket.client
-        self.schema = self.ticket.schema
 
     def compute_target_features(self):
         """
@@ -114,8 +117,8 @@ class TargetClip:
 
     def _bootstrap_valid_matches(self, list_of_feature_dictionaries, splits):
         """
-        Compute a new target for all features in list_of_features_dictionaries, presuming each one to be
-        for a user_match=True video clip
+        Compute a new target for the features in list_of_features_dictionaries, presuming each one to be
+        for a user_match=True video clip.  Randomly select half the features for forming the new target
 
         :param list_of_feature_dictionaries: Clip features dictionaries with
                                              entries { <stream type>: {<split #>:[<feature>], ...} }
@@ -130,6 +133,9 @@ class TargetClip:
             new_target[stream] = {}
             for split in splits:
                 features[stream][split] = []
+
+        # select half of the matching clips, at random
+        list_of_feature_dictionaries = self._random_fraction(list_of_feature_dictionaries)
 
         # Extract features from each match for each (stream, split) duo, and store as a list of features
         for feature_dictionary in list_of_feature_dictionaries:  # one feature_dictionary for each match
@@ -173,7 +179,11 @@ class TargetClip:
                 xfeatures[stream][split] = []
                 yfeatures[stream][split] = []
 
-        # Extract features from each match for each (stream, split) duo, and store as a list of features
+        # select half of the matching clips and half of invalid match clips, at random
+        list_valid_feature_dictionaries = self._random_fraction(list_valid_feature_dictionaries)
+        list_invalid_feature_dictionaries = self._random_fraction(list_invalid_feature_dictionaries)
+
+        # Extract features for each match for each (stream, split) duo, and store as a list of features
         for feature_dictionary in list_valid_feature_dictionaries:  # one feature_dictionary for each match
             for stream_type, split_features in feature_dictionary.items():
                 for split, feature in split_features.items():
@@ -237,6 +247,13 @@ class TargetClip:
             except ConnectionError:
                 sleep(0.05)
                 print('Try again: action = {}, params = {}'.format(action, params))
+
+    def _random_fraction(self, flist):
+        # select a random list of items from flist, with fraction*100% of the items from flist
+        nmatches = len(flist)
+        tmatches = round((nmatches + 0.5) * self.hyperparameters.f_bootstrap)
+        tsamples = random.sample(range(nmatches), tmatches)
+        return [flist[m] for m in tsamples]
 
     @staticmethod
     def _scale_feature(f):

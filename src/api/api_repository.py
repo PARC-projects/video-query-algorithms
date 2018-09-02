@@ -2,17 +2,23 @@
 """
 import logging
 from api.authenticate import authenticate
+from requests import ConnectionError
 import coreapi
 import os
+from time import sleep
 
 
 class APIRepository:   # base_url is the api url.  The default is the dev default.
     def __init__(self, base_url="http://127.0.0.1:8000/"):
         self.logger = logging.getLogger(__name__)
         # Setup authenticated API client
-        self.client = coreapi.Client(auth=authenticate(base_url))
-        self.schema = self.client.get(os.path.join(base_url, "docs"))
         self.url = base_url
+        self.client = coreapi.Client(auth=authenticate(self.url))
+        try:
+            self.schema = self.client.get(os.path.join(self.url, "docs"))
+        except ConnectionError:
+            sleep(0.05)
+            print('Try again to GET schema for APIRepository instance')
 
     def get_status(self):
         """Request queries that meet processing_state requirements

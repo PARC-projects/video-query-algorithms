@@ -1,6 +1,7 @@
 """Make requests for Queries based on processing state
 """
 from api.authenticate import authenticate
+from requests import ConnectionError
 import coreapi
 import os
 import csv
@@ -184,6 +185,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         video = self._request(action, params)
 
         last_round = self.get_last_round()
+        number_of_reviews = last_round["round"] - 1  # initial round is based on default weights
 
         action = ["search-sets", "read"]
         params = {"id": query["search_set_to_query"]}
@@ -198,16 +200,21 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             reportwriter = csv.writer(csvfile)
             # header information
             reportwriter.writerow(['Query:', query["name"], 'Query pk:', self.query_id])
-            reportwriter.writerow(['Video:', video["name"], 'Video pk:', self.video_id])
             reportwriter.writerow(['Search Set queried:', search_set["name"], 'Search set pk:', search_set["id"]])
-            reportwriter.writerow(['last round:', last_round["round"]])
+            reportwriter.writerow(['Reference Video:', video["name"], 'Video pk:', self.video_id])
+            reportwriter.writerow(['Reference time:', query["reference_time"]])
+            reportwriter.writerow(['number of reviews:', number_of_reviews])
             reportwriter.writerow(['min score for a match:', last_round["match_criterion"]])
+            reportwriter.writerow(["max matches to review:", query["max_matches_for_review"]])
             reportwriter.writerow(['streams:', str(hyperparameters.streams)])
             reportwriter.writerow(['stream weights:', str(last_round["weights"])])
+            reportwriter.writerow(['Target bootstrapping:', query["use_dynamic_target_adjustment"]])
+            reportwriter.writerow(['query notes:', query["notes"]])
             reportwriter.writerow([''])
             # write out a row for each video clip that is a match
             reportwriter.writerow(['Algorithm matches, user-identified matches, and user-identified non-matches'])
             reportwriter.writerow(['clip #', 'match type', 'video pk', 'video clip id', 'score', 'duration', 'notes'])
+            clip_rows = []
             for video_clip_id, score in self.matches.items():
                 match_type = "Algorithm match"
                 if str(video_clip_id) in matches_by_user:
@@ -218,8 +225,11 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 action = ["video-clips", "read"]
                 params = {"id": video_clip_id}
                 video_clip = self._request(action, params)
-                reportwriter.writerow([video_clip['clip'], match_type, video_clip['video'], video_clip_id, score,
-                                       video_clip['duration'], video_clip['notes']])
+                clip_rows.append([video_clip['clip'], match_type, video_clip['video'], video_clip_id, score,
+                                  video_clip['duration'], video_clip['notes']])
+            clip_rows.sort(key=lambda x: x[4], reverse=True)
+            for row in clip_rows:
+                reportwriter.writerow(row)
 
         with open(file, 'r') as csvfile:
             # write final report to API
