@@ -23,7 +23,7 @@ default_threshold = 0.8
 near_miss_default = 0.5
 streams = ('rgb', 'warped_optical_flow')
 feature_name = 'global_pool'
-mu = 0.08
+mu = 0.05
 # f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping.
 # The bootstrapped clips are adjusted for all streams and splits, so leaving some out of
 # bootstrapping forces the ensemble averaging to do more work.
