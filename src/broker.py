@@ -35,7 +35,7 @@ ballast = 0.2
 
 logging.basicConfig(
     format=FORMAT,
-    level=logging.INFO,  # level=logging.DEBUG,
+    level=logging.INFO,  # level=logging.DEBUG would print a lot more info
     handlers=[logging.FileHandler(LOG_NAME),
               logging.StreamHandler()])
 
@@ -49,7 +49,7 @@ def main():
                                          feature_name, mu, f_bootstrap)
         compute_matches(query_updates, hyperparameters)
     except Exception as e:
-        logging.error(e)
+        logging.error(e, exc_info=True)
     finally:
         if os.environ.get('BROKER_THREADING') == 'True':
             threading.Timer(LOOP_EXECUTION_TIME, main).start()

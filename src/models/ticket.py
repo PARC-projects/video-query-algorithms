@@ -9,6 +9,7 @@ from datetime import datetime
 import numpy as np
 import random
 from time import sleep
+import logging
 
 
 class Ticket:   # base_url is the api url.  The default is the dev default.
@@ -341,7 +342,8 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 return self.client.action(self.schema, action, params=params)
             except ConnectionError:
                 sleep(0.05)
-                print('Try again: action = {}, params = {}'.format(action, params))
+                msg = 'Try API request again: action = {}, params = {}'.format(action, params)
+                logging.warning(msg)
 
     def _post_file(self, action, params):
         while True:
@@ -349,4 +351,5 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 return self.client.action(self.schema, action, params=params, encoding="multipart/form-data")
             except ConnectionError:
                 sleep(0.05)
-                print('Try again: action = {}, params = {}'.format(action, params))
+                msg = 'Try API file post by Ticket again: action = {}, params = {}'.format(action, params)
+                logging.warning(msg)

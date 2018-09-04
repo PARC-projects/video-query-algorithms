@@ -3,6 +3,7 @@ import numpy as np
 from time import sleep
 import random
 import os
+import logging
 
 random.seed(a=int(os.environ["RANDOM_SEED"]))
 
@@ -246,7 +247,8 @@ class TargetClip:
                 return self.client.action(self.schema, action, params=params)
             except ConnectionError:
                 sleep(0.05)
-                print('Try again: action = {}, params = {}'.format(action, params))
+                msg = 'Try API request by Target again: action = {}, params = {}'.format(action, params)
+                logging.warning(msg)
 
     def _random_fraction(self, flist):
         # select a random list of items from flist, with fraction*100% of the items from flist
