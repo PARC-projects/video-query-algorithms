@@ -172,10 +172,6 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             self.scores[video_clip_id] = 1 - vscore
 
     def create_final_report(self, hyperparameters):
-        # create final report that contains scores of all matches
-        file_name = 'final_report_query_{}_{}.csv'.format(self.query_id, datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
-        file = os.path.join('../final_reports/', file_name)
-
         # Interact with the API endpoint to get query, video, query rounds, and search set info
         action = ["queries", "read"]
         params = {"id": self.query_id}
@@ -196,7 +192,13 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         if self.user_matches:
             matches_by_user = self.user_matches
 
-        # write the csv file
+        # create final report that contains scores of all matches
+        file_name = 'final_report_query_{}_{}.csv'.format(query["name"], datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
+        file = os.path.join('../final_reports/', file_name)
+        if not os.path.exists('../final_reports/'):
+            os.makedirs('../final_reports/')
+
+    # write the csv file
         with open(file, 'x', newline='') as csvfile:
             reportwriter = csv.writer(csvfile)
             # header information
