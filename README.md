@@ -24,8 +24,8 @@ After cloning this repository, you will be required to set the following Environ
 
 - API_CLIENT_USERNAME = a valid username for the API
 - API_CLIENT_PASSWORD = password for user API_CLIENT_USERNAME
-- [TSN_ROOT](Algorithms-Pipeline#environment-variables)
-- [TSN_ENVIRON](Algorithms-Pipeline#environment-variables)
+- [TSN_ROOT](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Pipeline#environment-variables)
+- [TSN_ENVIRON](https://github.com/PARC-projects/video-query-home/wiki/Algorithms-Pipeline#environment-variables)
 - BROKER_THREADING = True or False
   *  True:  each time the broker queries the API for new jobs, a new broker thread is also launched. this is the default.
   *  False: broker only checks once for jobs, then stops after executing any waiting jobs. Subsequent jobs won't be run until broker.py is manually run again, once per job.  This setting is for debugging.
