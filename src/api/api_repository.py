@@ -18,7 +18,8 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
             self.schema = self.client.get(os.path.join(self.url, "docs"))
         except ConnectionError:
             sleep(0.05)
-            print('Try again to GET schema for APIRepository instance')
+            msg = 'Try again to GET schema for APIRepository instance'
+            logging.warning(msg)
 
     def get_status(self):
         """Request queries that meet processing_state requirements
