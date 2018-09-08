@@ -100,7 +100,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 if match["user_match"]:
                     good_count += 1
             # good_count = 0 means user did not validate any matches, but we can recover from this error
-            if good_count == 0:
+            if good_count == 0 and self.dynamic_target_adjustment is True:
                 error_message = '*** Error: Dynamic target adjustment is {} but there are no user matches provided ' \
                                 'for the previous round. Changing dynamic target adjustment to False' \
                                 .format(self.dynamic_target_adjustment)
