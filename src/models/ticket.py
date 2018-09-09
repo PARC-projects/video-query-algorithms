@@ -5,7 +5,7 @@ from requests import ConnectionError
 import coreapi
 import os
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import random
 from time import sleep
@@ -216,7 +216,8 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             reportwriter.writerow([''])
             # write out a row for each video clip that is a match
             reportwriter.writerow(['Algorithm matches, user-identified matches, and user-identified non-matches'])
-            reportwriter.writerow(['clip #', 'match type', 'video pk', 'video clip id', 'score', 'duration', 'notes'])
+            reportwriter.writerow(['clip #', 'start time', 'match type', 'video pk', 'video clip id', 'score',
+                                   'duration', 'notes'])
             clip_rows = []
             for video_clip_id, score in self.matches.items():
                 match_type = "Algorithm match"
@@ -228,7 +229,9 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 action = ["video-clips", "read"]
                 params = {"id": video_clip_id}
                 video_clip = self._request(action, params)
-                clip_rows.append([video_clip['clip'], match_type, video_clip['video'], video_clip_id, score,
+                start_time = (int(video_clip['clip']) - 1) * video_clip['duration']
+                stime = str(timedelta(seconds=start_time))
+                clip_rows.append([video_clip['clip'], stime, match_type, video_clip['video'], video_clip_id, score,
                                   video_clip['duration'], video_clip['notes']])
             clip_rows.sort(key=lambda x: x[4], reverse=True)
             for row in clip_rows:
