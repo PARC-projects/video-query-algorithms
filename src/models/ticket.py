@@ -78,33 +78,34 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
 
     def catch_errors(self, job_type):
         # catch errors, create error messages, and create corrections if possible
-        fatal_error_message = None
-        error_message = {}
+        fatal_error_accumulator = []
+        error_accumulator = []
 
         # Check for no ref clip, most likely because reference time is not in video
         if self.ref_clip_id is None:
-            fatal_error_message = "*** Fatal Error: A video clip corresponding to the reference time does not exist " \
-                            "in the database. ***"
+            fatal_error_accumulator.append("*** Fatal Error: A video clip corresponding to the reference time does "
+                                           "not exist in the database. ***")
 
         # Check for no matches on all but new jobs
         if job_type is not "new" and not self.matches:
-            fatal_error_message = '*** Fatal Error: This is not a new query but there are 0 matches computed for ' \
-                                  'the previous round. Cannot update without matches. Check database consistency ' \
-                                  'for this query'
+            fatal_error_accumulator.append("*** Fatal Error: This is not a new query but there are 0 matches computed '\
+                                  'for the previous round. Cannot update without matches. Check database consistency ' \
+                                  'for this query")
 
         # On all but new jobs: Check for user matches if dynamic_target_adjustment is True.
         # Cannot adjust target without user matches to guide the adjustment.
-        if job_type is not "new":
-            good_count = 0
+        if job_type is not "new" and self.dynamic_target_adjustment is True:
+            no_error = False
             for match in self.matches:
-                if match["user_match"]:
-                    good_count += 1
-            # good_count = 0 means user did not validate any matches, but we can recover from this error
-            if good_count == 0 and self.dynamic_target_adjustment is True:
-                error_message = '*** Error: Dynamic target adjustment is {} but there are no user matches provided ' \
-                                'for the previous round. Changing dynamic target adjustment to False' \
-                                .format(self.dynamic_target_adjustment)
+                if match["user_match"] is True:
+                    no_error = True
+                    break
+            if no_error is False:
+                error_accumulator.append('*** Error: Dynamic target adjustment is True but there are no user matches '
+                                         'provided for the previous round. Changing dynamic target adjustment to False')
                 self.dynamic_target_adjustment = False
+        fatal_error_message = "\n".join(fatal_error_accumulator)
+        error_message = "\n".join(error_accumulator)
         return fatal_error_message, error_message
 
     def change_process_state(self, process_state, message=None):
@@ -123,14 +124,20 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
 
         Hyperparameter dictionary: keys include "default_weights", "default_threshold", "near_miss_default": 0.5,
                                     "streams", "feature_name"
-        """
-        # Create instance of the target, which starts out as the reference clip but can change if
-        # dynamic_target_adjustment = True
-        # Also, get the feature dictionary for the target: { <stream type>: {<split #>: [<ref feature>], ...} }
-        self.target.compute_target_features()
 
-        # get the feature dictionary for all video clips (in the search set of interest).
-        # Dictionary structure is { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
+        General logic:
+            get target features (initially the reference clip features, scaled by their squared L2 norm)
+            get features for all candidate matches (i.e. all clips in search set)
+            for each stream type:
+                for each split:
+                    for each candidate feature of this stream type and split:
+                        compute dot product similarity
+                        add to list of similarities for this clip and stream
+                for each clip:
+                    average the similarities in the list over all splits
+        """
+        # Get the feature dictionary for all video clips (in the search set of interest).
+        # Dictionary structure is { <stream type>: {<split #>: { clip#: [<candidate feature>], ...} } }
         candidates = self._get_candidate_features(self.target.splits, hyperparameters)
 
         # compute similarities and ensemble average them over the splits
@@ -146,10 +153,10 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             # ensemble average over the splits for each id
             for clip_id, sim_array in similarities.items():
                 id_len = len(sim_array)
-                avg_sim = sum(sim_array) / id_len
-                # create dictionary item for clip_id if it does not exist, and add result:
+                avg_sim_this_stream = sum(sim_array) / id_len
+                # create dictionary item in avgd_similarities for clip_id if it does not exist, and add result:
                 avgd_similarities[clip_id] = avgd_similarities.get(clip_id, {})
-                avgd_similarities[clip_id].update({stream_type: [avg_sim, id_len]})
+                avgd_similarities[clip_id].update({stream_type: [avg_sim_this_stream, id_len]})
 
         # update Ticket similarities
         self.similarities = avgd_similarities

@@ -2,10 +2,10 @@ from requests import ConnectionError
 import numpy as np
 from time import sleep
 import random
-import os
+# import os
 import logging
 
-random.seed(a=int(os.environ["RANDOM_SEED"]))
+# random.seed(a=int(os.environ["RANDOM_SEED"]))
 
 
 class TargetClip:
@@ -16,12 +16,13 @@ class TargetClip:
         """
         self.client = ticket.client
         self.schema = ticket.schema
-        self.ticket = ticket
+        self.bootstrap_target = ticket.dynamic_target_adjustment
+        self.tuning_update = ticket.tuning_update
         self.hyperparameters = hyperparameters
         self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
         self.target_features = {}
 
-    def compute_target_features(self):
+    def get_target_features(self):
         """
         Method to compute dictionary of target features for the current state of query with id = ticket.query_id.
         Depending on dynamic target adjustment setting, either choose ref clip as the target or adjust the target
@@ -30,12 +31,12 @@ class TargetClip:
         Output: self.target_features dictionary, of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
-        if not self.ticket.dynamic_target_adjustment or self.ticket.tuning_update is None:
+        if not self.bootstrap_target or self.tuning_update is None:
             self.target_features = self.scaled_ref_clip_features()
         else:
             # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
             # Also return all splits present in the feature dictionaries
-            features_4_matches, splits_4_matches = self.features_of_confirmed_matches()
+            features_4_matches, splits_4_matches = self.features_for_matches(user_match_value=True)
 
             # Compute the new target using dynamic target adjustment, unless there are no confirmed matches
             if features_4_matches:
@@ -51,7 +52,7 @@ class TargetClip:
         returns dictionary of new target features in the format { <stream type>: {<split #>:[<target feature>], ...} }
         """
         # Check for user_match=False data points, and use if available. Otherwise, use only user_match=True data.
-        features_invalid_matches, splits_invalid_matches = self.features_of_invalidated_matches()
+        features_invalid_matches, splits_invalid_matches = self.features_for_matches(user_match_value=False)
         if features_invalid_matches:
             new_target = self._bootstrap_valid_plus_invalid(list_of_feature_dictionaries, features_invalid_matches,
                                                             splits)
@@ -59,54 +60,27 @@ class TargetClip:
             new_target = self._bootstrap_valid_matches(list_of_feature_dictionaries, splits)
         return new_target
 
-    def features_of_confirmed_matches(self):
-        # Interact with the API endpoint to get confirmed matches for the query
+    def features_for_matches(self, user_match_value=True):
+        # Interact with the API endpoint to get matches for the query
         page = 1
-        confirmed_matches = []
+        matches = []
         while page is not None:
             action = ["matches", "list"]
-            params = {"query_result": self.ticket.tuning_update["id"],
-                      "page": page
-                      }
+            params = {"query_result": self.tuning_update["id"], "page": page}
             results = self._request(action, params)
-            confirmed_matches.extend(results["results"])
+            matches.extend(results["results"])
             page = results["pagination"]["nextPage"]
-
-        # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
-        confirmed_matches_features = []
-        splits_confirmed_matches = set()
-        for match in confirmed_matches:
-            if match["user_match"]:
+        # Load features for matches where user_match equals user_match_value into a list of feature dictionaries:
+        # [<features dictionary 1>, ...]
+        matches_features = []
+        splits_matches = set()
+        for match in matches:
+            if match["user_match"] is user_match_value:
                 match_features, match_splits = self._get_clip_features(match["video_clip"])
-                confirmed_matches_features.append(match_features)
-                # splits_confirmed_matches is a set, so elements are added only if not already in splits
-                splits_confirmed_matches.update(match_splits)
-        return confirmed_matches_features, splits_confirmed_matches
-
-    def features_of_invalidated_matches(self):
-        # Interact with the API endpoint to get invalidated matches for the query
-        page = 1
-        invalidated_matches = []
-        while page is not None:
-            action = ["matches", "list"]
-            params = {"query_result": self.ticket.tuning_update["id"],
-                      "page": page
-                      }
-            results = self._request(action, params)
-            invalidated_matches.extend(results["results"])
-            page = results["pagination"]["nextPage"]
-
-        # Load features for invalidated matches into a list of feature dictionaries: [<features dictionary 1>, ...]
-        # Make sure to not load features from the same video clip more than once
-        invalidated_matches_features = []
-        splits_invalidated_matches = set()
-        for match in invalidated_matches:
-            if match["user_match"] is False:
-                match_features, match_splits = self._get_clip_features(match["video_clip"])
-                invalidated_matches_features.append(match_features)
-                # splits_confirmed_matches is a set, so elements are added only if not already in splits
-                splits_invalidated_matches.update(match_splits)
-        return invalidated_matches_features, splits_invalidated_matches
+                matches_features.append(match_features)
+                # splits_matches is a set, so elements are added only if not already in splits
+                splits_matches.update(match_splits)
+        return matches_features, splits_matches
 
     def scaled_ref_clip_features(self):
         ref_features = {}
