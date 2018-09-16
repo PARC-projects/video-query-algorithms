@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import logging
 
 eps_threshold = float(os.environ["COMPUTE_EPS"])
 
@@ -94,12 +95,16 @@ class Hyperparameter:
         th0 = max(th0, x[1][0])
 
         # make sure fit is good
-        eps = 10**-6
+        eps = 10**-5
         y0 = a0 * (x[0][0]-w0)**2 + b0 * (x[1][1]-th0)**2 + c0
         y1 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][0] - th0) ** 2 + c0
         y2 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][1] - th0) ** 2 + c0
         y3 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][2] - th0) ** 2 + c0
         y4 = a0 * (x[0][2] - w0) ** 2 + b0 * (x[1][1] - th0) ** 2 + c0
-        assert (abs(y0) + abs(y1) + abs(y2) + abs(y3) + abs(y4)) > eps
+        if (abs(y[0]-y0) + abs(y[1]-y1) + abs(y[2]-y2) + abs(y[3]-y3) + abs(y[4]-y4)) > eps:
+            logging.warning("hyperparameter quadratic fine tuning failed - resort to selecting optimum on grid without "
+                            "further interpolation")
+            w0 = x[0][1]
+            th0 = x[1][1]
 
         return w0, th0
