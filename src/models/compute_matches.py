@@ -94,7 +94,7 @@ def compute_matches(query_updates, hyperparameters):
         # Otherwise, Change process_state to 4: Processed (for all jobs that are not finalize jobs)
         # TODO: Add email notification to user
         if update_type == "finalize":
-            ticket.create_final_report(hyperparameters)
+            ticket.create_final_report(hyperparameters, new_result_id)
             ticket.change_process_state(7)
             continue
         else:
