@@ -197,10 +197,6 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         params = {"id": query["search_set_to_query"]}
         search_set = self._request(action, params)
 
-        matches_by_user = {}
-        if self.user_matches:
-            matches_by_user = self.user_matches
-
         # create final report that contains scores of all matches
         file_name = 'final_report_query_{}_{}.csv'.format(query["name"], datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
         file = os.path.join('../final_reports/', file_name)
@@ -233,8 +229,8 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 # by the user in this round, when compute_matches set
                 # max_number_matches = float("inf")  and near_miss = 0 before selecting matches for finalization.
                 # Otherwise, whatever matches are put in self.matches are reported here.
-                if str(video_clip_id) in matches_by_user:
-                    if matches_by_user[str(video_clip_id)] is True:
+                if str(video_clip_id) in self.user_matches:
+                    if self.user_matches[str(video_clip_id)] is True:
                         match_type = "user-identified match"
                     else:
                         match_type = "user-identified non-match"

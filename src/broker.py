@@ -31,7 +31,7 @@ mu = 0.05
 f_bootstrap = 0.5
 # ballast should be >=0 and <1.
 # False positives penalty reduced by (1-ballast), false negative penalty increased by (1+ballast)
-ballast = 0.2
+ballast = 0.0
 # *** End of hyperparameter defaults
 
 logging.basicConfig(
