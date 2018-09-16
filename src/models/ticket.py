@@ -298,7 +298,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         :param max_number_matches:  max number of matches the user wants to review.
         :param near_miss:  range of scores for near misses relative to the range (1-threshold) for hits
         """
-        lower_limit = 1 - (1 + near_miss) * (1 - threshold)
+        lower_limit = threshold - near_miss * (1 - threshold)
         match_candidates = {k: v for k, v in self.scores.items() if v >= threshold}
         near_match_candidates = {k: v for k, v in self.scores.items() if lower_limit <= v < threshold}
 
