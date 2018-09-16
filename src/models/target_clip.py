@@ -2,10 +2,7 @@ from requests import ConnectionError
 import numpy as np
 from time import sleep
 import random
-# import os
 import logging
-
-# random.seed(a=int(os.environ["RANDOM_SEED"]))
 
 
 class TargetClip:
