@@ -61,6 +61,16 @@ class TargetClip:
         return new_target
 
     def features_for_matches(self, user_match_value=True):
+        """
+        General logic:
+            get all matches for the query_result corresponding to the ticket used to initialize this Target instance
+            for each match with user_match=user_match_value:
+                add the feature dictionary for that match to the matches_features list
+                update splits encountered as needed
+
+        :param user_match_value: True or False depending on which features are required
+        :return: list of features for all matches where user_match=user_match_value, and all splits encountered
+        """
         # Interact with the API endpoint to get matches for the query
         page = 1
         matches = []
@@ -225,7 +235,7 @@ class TargetClip:
                 logging.warning(msg)
 
     def _random_fraction(self, flist):
-        # select a random list of items from flist, with fraction*100% of the items from flist
+        # select a random list of items from flist, with fraction set by self.hyperparameters.f_bootstrap
         nmatches = len(flist)
         tmatches = round((nmatches + 0.5) * self.hyperparameters.f_bootstrap)
         tsamples = random.sample(range(nmatches), tmatches)
