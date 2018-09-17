@@ -39,7 +39,6 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         self.ref_clip = update_object["ref_clip"]
         self.ref_clip_id = update_object["ref_clip_id"]
         self.search_set = update_object["search_set"]
-        self.number_of_matches_to_review = update_object["number_of_matches_to_review"]
         self.dynamic_target_adjustment = update_object["dynamic_target_adjustment"]
         if "tuning_update" in update_object:
             self.tuning_update = update_object["tuning_update"]
