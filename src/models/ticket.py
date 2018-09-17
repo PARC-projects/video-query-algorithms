@@ -39,6 +39,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         self.ref_clip = update_object["ref_clip"]
         self.ref_clip_id = update_object["ref_clip_id"]
         self.search_set = update_object["search_set"]
+        self.number_of_matches_to_review = update_object["number_of_matches_to_review"]
         self.dynamic_target_adjustment = update_object["dynamic_target_adjustment"]
         if "tuning_update" in update_object:
             self.tuning_update = update_object["tuning_update"]
@@ -241,7 +242,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 action = ["matches", "list"]
                 params = {"query_result": query_result_id, "video_clip": video_clip_id}
                 match = self._request(action, params)
-                start_time = int(match["match_video_time_span"].split(",")[0])
+                start_time = int(match["results"][0]["match_video_time_span"].split(",")[0])
                 stime = str(timedelta(seconds=start_time))
                 clip_rows.append([video_clip['clip'], stime, match_type, video_clip['video'], video_clip_id, score,
                                   video_clip['duration'], video_clip['notes']])
