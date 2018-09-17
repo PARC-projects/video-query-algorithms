@@ -12,6 +12,22 @@ def compute_matches(query_updates, hyperparameters):
     to see if new algorithm tasks need to be performed.
 
     hyperparameters: for deep learning computations, instance of Hyperparameter class
+
+    General logic:
+        check if there are queries to update
+        for each query needing updating:
+            create a ticket
+            check ticket for errors
+            create a target (initially the reference clip) and get its features (compute if target bootstrapping)
+            compute similarities of all clips in search set to the target
+            for all but new queries:
+                optimize hyperparameters
+            put a new query result in the API database
+            compute scores
+            create new set of matches for review
+            add new matches to API database
+            for "finalize" query updates:
+                create final report
     """
     # Get info on any queries in the API repository that are waiting for an update
     updates_needed = query_updates.get_status()
@@ -34,8 +50,10 @@ def compute_matches(query_updates, hyperparameters):
         if error_message:
             ticket.add_note(error_message)
 
-        # compute similarities with all clips in the search set
+        # Get the feature dictionary for the target: { <stream type>: {<split #>: [<target feature>], ...} }
         ticket.target = TargetClip(ticket, hyperparameters)
+        ticket.target.get_target_features()
+        # compute similarities with all clips in the search set
         ticket.compute_similarities(hyperparameters)
 
         # for revise and finalize jobs, update weights and threshold based on current matches
@@ -76,7 +94,7 @@ def compute_matches(query_updates, hyperparameters):
         # Otherwise, Change process_state to 4: Processed (for all jobs that are not finalize jobs)
         # TODO: Add email notification to user
         if update_type == "finalize":
-            ticket.create_final_report(hyperparameters)
+            ticket.create_final_report(hyperparameters, new_result_id)
             ticket.change_process_state(7)
             continue
         else:

@@ -78,33 +78,34 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
 
     def catch_errors(self, job_type):
         # catch errors, create error messages, and create corrections if possible
-        fatal_error_message = None
-        error_message = {}
+        fatal_error_accumulator = []
+        error_accumulator = []
 
         # Check for no ref clip, most likely because reference time is not in video
         if self.ref_clip_id is None:
-            fatal_error_message = "*** Fatal Error: A video clip corresponding to the reference time does not exist " \
-                            "in the database. ***"
+            fatal_error_accumulator.append("*** Fatal Error: A video clip corresponding to the reference time does "
+                                           "not exist in the database. ***")
 
         # Check for no matches on all but new jobs
         if job_type is not "new" and not self.matches:
-            fatal_error_message = '*** Fatal Error: This is not a new query but there are 0 matches computed for ' \
-                                  'the previous round. Cannot update without matches. Check database consistency ' \
-                                  'for this query'
+            fatal_error_accumulator.append("*** Fatal Error: This is not a new query but there are 0 matches computed '\
+                                  'for the previous round. Cannot update without matches. Check database consistency ' \
+                                  'for this query")
 
         # On all but new jobs: Check for user matches if dynamic_target_adjustment is True.
         # Cannot adjust target without user matches to guide the adjustment.
-        if job_type is not "new":
-            good_count = 0
+        if job_type is not "new" and self.dynamic_target_adjustment is True:
+            no_error = False
             for match in self.matches:
-                if match["user_match"]:
-                    good_count += 1
-            # good_count = 0 means user did not validate any matches, but we can recover from this error
-            if good_count == 0 and self.dynamic_target_adjustment is True:
-                error_message = '*** Error: Dynamic target adjustment is {} but there are no user matches provided ' \
-                                'for the previous round. Changing dynamic target adjustment to False' \
-                                .format(self.dynamic_target_adjustment)
+                if match["user_match"] is True:
+                    no_error = True
+                    break
+            if no_error is False:
+                error_accumulator.append('*** Error: Dynamic target adjustment is True but there are no user matches '
+                                         'provided for the previous round. Changing dynamic target adjustment to False')
                 self.dynamic_target_adjustment = False
+        fatal_error_message = "\n".join(fatal_error_accumulator)
+        error_message = "\n".join(error_accumulator)
         return fatal_error_message, error_message
 
     def change_process_state(self, process_state, message=None):
@@ -123,14 +124,20 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
 
         Hyperparameter dictionary: keys include "default_weights", "default_threshold", "near_miss_default": 0.5,
                                     "streams", "feature_name"
-        """
-        # Create instance of the target, which starts out as the reference clip but can change if
-        # dynamic_target_adjustment = True
-        # Also, get the feature dictionary for the target: { <stream type>: {<split #>: [<ref feature>], ...} }
-        self.target.compute_target_features()
 
-        # get the feature dictionary for all video clips (in the search set of interest).
-        # Dictionary structure is { <stream type>: {<split #>: { clip#: [<target feature>], ...} } }
+        General logic:
+            get target features (initially the reference clip features, scaled by their squared L2 norm)
+            get features for all candidate matches (i.e. all clips in search set)
+            for each stream type:
+                for each split:
+                    for each candidate feature of this stream type and split:
+                        compute dot product similarity
+                        add to list of similarities for this clip and stream
+                for each clip:
+                    average the similarities in the list over all splits
+        """
+        # Get the feature dictionary for all video clips (in the search set of interest).
+        # Dictionary structure is { <stream type>: {<split #>: { clip#: [<candidate feature>], ...} } }
         candidates = self._get_candidate_features(self.target.splits, hyperparameters)
 
         # compute similarities and ensemble average them over the splits
@@ -146,10 +153,10 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             # ensemble average over the splits for each id
             for clip_id, sim_array in similarities.items():
                 id_len = len(sim_array)
-                avg_sim = sum(sim_array) / id_len
-                # create dictionary item for clip_id if it does not exist, and add result:
+                avg_sim_this_stream = sum(sim_array) / id_len
+                # create dictionary item in avgd_similarities for clip_id if it does not exist, and add result:
                 avgd_similarities[clip_id] = avgd_similarities.get(clip_id, {})
-                avgd_similarities[clip_id].update({stream_type: [avg_sim, id_len]})
+                avgd_similarities[clip_id].update({stream_type: [avg_sim_this_stream, id_len]})
 
         # update Ticket similarities
         self.similarities = avgd_similarities
@@ -171,7 +178,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             vscore = np.sqrt(ssum / denom)
             self.scores[video_clip_id] = 1 - vscore
 
-    def create_final_report(self, hyperparameters):
+    def create_final_report(self, hyperparameters, query_result_id):
         # Interact with the API endpoint to get query, video, query rounds, and search set info
         action = ["queries", "read"]
         params = {"id": self.query_id}
@@ -181,16 +188,14 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         params = {"id": self.video_id}
         video = self._request(action, params)
 
-        last_round = self.get_last_round()
-        number_of_reviews = last_round["round"] - 1  # initial round is based on default weights
+        action = ["query-results", "read"]
+        params = {"id": query_result_id}
+        query_result = self._request(action, params)
+        number_of_reviews = query_result["round"] - 1  # initial round is based on default weights
 
         action = ["search-sets", "read"]
         params = {"id": query["search_set_to_query"]}
         search_set = self._request(action, params)
-
-        matches_by_user = {}
-        if self.user_matches:
-            matches_by_user = self.user_matches
 
         # create final report that contains scores of all matches
         file_name = 'final_report_query_{}_{}.csv'.format(query["name"], datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
@@ -207,33 +212,41 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             reportwriter.writerow(['Reference Video:', video["name"], 'Video pk:', self.video_id])
             reportwriter.writerow(['Reference time:', query["reference_time"]])
             reportwriter.writerow(['number of reviews:', number_of_reviews])
-            reportwriter.writerow(['min score for a match:', last_round["match_criterion"]])
+            reportwriter.writerow(['min score for a match:', query_result["match_criterion"]])
             reportwriter.writerow(["max matches to review:", query["max_matches_for_review"]])
             reportwriter.writerow(['streams:', str(hyperparameters.streams)])
-            reportwriter.writerow(['stream weights:', str(last_round["weights"])])
+            reportwriter.writerow(['stream weights:', str(query_result["weights"])])
             reportwriter.writerow(['Target bootstrapping:', query["use_dynamic_target_adjustment"]])
             reportwriter.writerow(['query notes:', query["notes"]])
             reportwriter.writerow([''])
-            # write out a row for each video clip that is a match
-            reportwriter.writerow(['Algorithm matches, user-identified matches, and user-identified non-matches'])
+            # write out a row for each video clip that is a selected match
             reportwriter.writerow(['clip #', 'start time', 'match type', 'video pk', 'video clip id', 'score',
                                    'duration', 'notes'])
             clip_rows = []
             for video_clip_id, score in self.matches.items():
-                match_type = "Algorithm match"
-                if str(video_clip_id) in matches_by_user:
-                    if matches_by_user[str(video_clip_id)]:
+                # add a row for each match that is in the set of self.matches.
+                # This set includes matches either above the threshold score or explicitly scored
+                # by the user in this round, when compute_matches set
+                # max_number_matches = float("inf")  and near_miss = 0 before selecting matches for finalization.
+                # Otherwise, whatever matches are put in self.matches are reported here.
+                if str(video_clip_id) in self.user_matches:
+                    if self.user_matches[str(video_clip_id)] is True:
                         match_type = "user-identified match"
                     else:
                         match_type = "user-identified non-match"
+                else:
+                    match_type = ""
                 action = ["video-clips", "read"]
                 params = {"id": video_clip_id}
                 video_clip = self._request(action, params)
-                start_time = (int(video_clip['clip']) - 1) * video_clip['duration']
+                action = ["matches", "list"]
+                params = {"query_result": query_result_id, "video_clip": video_clip_id}
+                match = self._request(action, params)
+                start_time = int(match["results"][0]["match_video_time_span"].split(",")[0])
                 stime = str(timedelta(seconds=start_time))
                 clip_rows.append([video_clip['clip'], stime, match_type, video_clip['video'], video_clip_id, score,
                                   video_clip['duration'], video_clip['notes']])
-            clip_rows.sort(key=lambda x: x[4], reverse=True)
+            clip_rows.sort(key=lambda x: x[5], reverse=True)
             for row in clip_rows:
                 reportwriter.writerow(row)
 
@@ -267,19 +280,6 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         result = self._request(action, params)
         return result["id"]
 
-    def get_last_round(self):
-        page = 1
-        last_round = {"round": 0}
-        while page is not None:
-            action = ["query-results", "list"]
-            params = {"query": self.query_id, "page": page}
-            query_results = self._request(action, params)
-            for round_object in query_results["results"]:
-                if round_object["round"] > last_round["round"]:
-                    last_round = round_object
-            page = query_results["pagination"]["nextPage"]
-        return last_round
-
     def select_matches(self, threshold=0.8, max_number_matches=20, near_miss=0.5):
         """
         Find matches and near matches for review,
@@ -294,7 +294,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         :param max_number_matches:  max number of matches the user wants to review.
         :param near_miss:  range of scores for near misses relative to the range (1-threshold) for hits
         """
-        lower_limit = 1 - (1 + near_miss) * (1 - threshold)
+        lower_limit = threshold - near_miss * (1 - threshold)
         match_candidates = {k: v for k, v in self.scores.items() if v >= threshold}
         near_match_candidates = {k: v for k, v in self.scores.items() if lower_limit <= v < threshold}
 

@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import logging
 
 eps_threshold = float(os.environ["COMPUTE_EPS"])
 
@@ -83,7 +84,7 @@ class Hyperparameter:
         w0 = 0.5 * w0 / ((y[4]-y[0]) * x[0][1] + (y[2]-y[4]) * x[0][0] - (y[2]-y[0]) * x[0][2])
         a0 = (y[2]-y[0]) / ((x[0][1] - w0)**2 - (x[0][0] - w0)**2)
         th0 = (y[3]-y[1]) * x[1][1]**2 + (y[2]-y[3]) * x[1][0]**2 - (y[2]-y[1]) * x[1][2]**2
-        w0 = 0.5 * w0 / ((y[3]-y[1]) * x[1][1] + (y[2]-y[3]) * x[1][0] - (y[2]-y[1]) * x[1][2])
+        th0 = 0.5 * th0 / ((y[3]-y[1]) * x[1][1] + (y[2]-y[3]) * x[1][0] - (y[2]-y[1]) * x[1][2])
         b0 = (y[2]-y[1]) / ((x[1][1] - th0)**2 - (x[1][0] - th0)**2)
         c0 = y[2] - a0 * (x[0][1] - w0)**2 - b0 * (x[1][1] - th0)**2
 
@@ -100,6 +101,9 @@ class Hyperparameter:
         y2 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][1] - th0) ** 2 + c0
         y3 = a0 * (x[0][1] - w0) ** 2 + b0 * (x[1][2] - th0) ** 2 + c0
         y4 = a0 * (x[0][2] - w0) ** 2 + b0 * (x[1][1] - th0) ** 2 + c0
-        assert (abs(y0) + abs(y1) + abs(y2) + abs(y3) + abs(y4)) > eps
-
+        if (abs(y[0]-y0) + abs(y[1]-y1) + abs(y[2]-y2) + abs(y[3]-y3) + abs(y[4]-y4)) > eps:
+            logging.warning("hyperparameter quadratic fine tuning failed - resort to selecting optimum on grid without "
+                            "further interpolation")
+            w0 = x[0][1]
+            th0 = x[1][1]
         return w0, th0

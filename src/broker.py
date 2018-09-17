@@ -5,6 +5,7 @@ This script is designed to be executed as a long running service.
 TODO: Consider shifting to a daemonize approach to manage this process.
 """
 import os
+import random
 import threading
 from datetime import datetime
 import logging
@@ -30,7 +31,7 @@ mu = 0.05
 f_bootstrap = 0.5
 # ballast should be >=0 and <1.
 # False positives penalty reduced by (1-ballast), false negative penalty increased by (1+ballast)
-ballast = 0.2
+ballast = 0.0
 # *** End of hyperparameter defaults
 
 logging.basicConfig(
@@ -47,6 +48,8 @@ def main():
         query_updates = APIRepository(BASE_URL)
         hyperparameters = Hyperparameter(default_weights, default_threshold, ballast, near_miss_default, streams,
                                          feature_name, mu, f_bootstrap)
+        if os.environ["RANDOM_SEED"] != "None":
+            random.seed(a=os.environ["RANDOM_SEED"])
         compute_matches(query_updates, hyperparameters)
     except Exception as e:
         logging.error(e, exc_info=True)

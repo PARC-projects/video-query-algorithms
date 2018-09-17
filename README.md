@@ -30,7 +30,10 @@ After cloning this repository, you will be required to set the following Environ
   *  True:  each time the broker queries the API for new jobs, a new broker thread is also launched. this is the default.
   *  False: broker only checks once for jobs, then stops after executing any waiting jobs. Subsequent jobs won't be run until broker.py is manually run again, once per job.  This setting is for debugging.
 - COMPUTE_EPS = a small number, e.g. 0.000003
-- RANDOM_SEED = random integer for seeding the python random numbers. Setting this enables checking for reproducibility.  Example: "export RANDOM_SEED=73459912436"
+- RANDOM_SEED = random integer for seeding the python random numbers. Setting this enables checking for reproducibility.  Example: "export RANDOM_SEED=73459912436" 
+will enable a reproducible set of code executions in each call of compute_matches.py.
+Setting RANDOM_SEED=None will result in setting a random seed based on system time, which is more appropriate 
+when not debugging or testing code.
 
 One way to set these is to execute 
  
@@ -48,7 +51,7 @@ export API_CLIENT_USERNAME='your_username'
 export API_CLIENT_PASSWORD='your_password'
 export BROKER_THREADING='True'
 export COMPUTE_EPS=.000003
-export RANDOM_SEED=73459912436
+export RANDOM_SEED=73459912436abcd
 ```
 
 
