@@ -36,6 +36,17 @@ class Hyperparameter:
            remainder are for streams 2, 3, ....
            weight for rgb stream is set equal to one, since it otherwise would get normalized out
         """
+        match_status = self.get_info_about_matches_in_ticket(ticket)
+        ith0, iw0, losses = self.compute_loss(match_status, ticket)
+        threshold_optimum, weight_optimum = self.fit_losses(ith0, iw0, losses)
+        self.add_buffer(threshold_optimum)
+        self.weights = {
+            self.streams[0]: 1.0,
+            self.streams[1]: weight_optimum
+        }
+
+    @staticmethod
+    def get_info_about_matches_in_ticket(ticket):
         # get info about matches in the ticket
         match_status = {}
         for match in ticket.matches:
@@ -43,12 +54,14 @@ class Hyperparameter:
                 match_status[match['video_clip']] = match["user_match"]  # For user_match == True or False
             else:
                 match_status[match['video_clip']] = match["is_match"]  # For clips the user did not evaluate
+        return match_status
 
+    def compute_loss(self, match_status, ticket):
         # compute loss function and find minimum.
         # Loss = 0 for correct scores
         # Loss = abs(score - th) for false positive
         # Loss = abs(score - th)*(1 + ballast) for false negative
-        losses = 100 * np.ones([self.weight_grid.shape[0], self.threshold_grid.shape[0]])     # initialize loss matrix
+        losses = 100 * np.ones([self.weight_grid.shape[0], self.threshold_grid.shape[0]])  # initialize loss matrix
         for iw, w in enumerate(self.weight_grid):
             ticket.compute_scores({self.streams[0]: 1.0, self.streams[1]: w})
             for ith, th in enumerate(self.threshold_grid):
@@ -56,19 +69,22 @@ class Hyperparameter:
                 for video_clip_id in match_status:
                     score = ticket.scores[video_clip_id]
                     loss += (np.heaviside(score - th, 1) - match_status[video_clip_id]) * (score - th) \
-                        * (1 + match_status[video_clip_id]*self.ballast)
+                            * (1 + match_status[video_clip_id] * self.ballast)
                 losses[iw, ith] = loss / len(match_status)
         [iw0, ith0] = np.unravel_index(np.argmin(losses, axis=None), losses.shape)
+        return ith0, iw0, losses
 
+    def fit_losses(self, ith0, iw0, losses):
         # fit losses around minimum to a parabola and fine tune the minimum, unless minimum is on the border of the grid
-        if iw0 == 0 or ith0 == 0 or iw0 == len(self.weight_grid)-1 or ith0 == len(self.threshold_grid)-1:
+        if iw0 == 0 or ith0 == 0 or iw0 == len(self.weight_grid) - 1 or ith0 == len(self.threshold_grid) - 1:
             weight_optimum = self.weight_grid[iw0]
             threshold_optimum = self.threshold_grid[ith0]
         else:
             weight_optimum, threshold_optimum = self.fine_tune(iw0, ith0, losses)
+        return threshold_optimum, weight_optimum
 
+    def add_buffer(self, threshold_optimum):
         self.threshold = threshold_optimum - eps_threshold  # add a small buffer to account for round-off errors
-        self.weights = {self.streams[0]: 1.0, self.streams[1]: weight_optimum}
 
     def fine_tune(self, iw0, ith0, losses):
         xrange = [(self.weight_grid[iw0 - 1], self.weight_grid[iw0], self.weight_grid[iw0 + 1]),
