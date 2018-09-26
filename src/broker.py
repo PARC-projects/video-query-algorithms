@@ -28,7 +28,7 @@ mu = 0.05
 # f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping.
 # The bootstrapped clips are adjusted for all streams and splits, so leaving some out of
 # bootstrapping forces the ensemble averaging to do more work.
-f_bootstrap = 0.5
+f_bootstrap = 0.6
 # ballast should be >=0 and <1.
 # False positives penalty reduced by (1-ballast), false negative penalty increased by (1+ballast)
 ballast = 0.0
