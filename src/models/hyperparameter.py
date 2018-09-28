@@ -20,6 +20,7 @@ class Hyperparameter:
         self.threshold_grid = np.arange(0.5, 1.1, 0.02)
         self.mu = mu
         self.f_bootstrap = f_bootstrap
+        #TODO: add code to check if hyperparameters are in an allowable range, e.g. 0<f_bootstrap<=1
 
     def optimize_weights(self, ticket):
         """
