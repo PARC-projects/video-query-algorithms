@@ -235,7 +235,7 @@ class TargetClip:
         # select a random list of items from flist, with fraction set by self.hyperparameters.f_bootstrap
         nmatches = len(flist)
         tmatches = round(nmatches * self.hyperparameters.f_bootstrap)
-        tmatches = max(tmatches, 1)
+        tmatches = max(tmatches, 1)  # make sure at least one item is selected
         tsamples = random.sample(range(nmatches), tmatches)
         return [flist[m] for m in tsamples]
 
