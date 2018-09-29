@@ -146,7 +146,7 @@ if __name__ == '__main__':
                                                                                       'default = mp4')
     parser.add_argument("--new_width", type=int, default=0, help='resize image width')
     parser.add_argument("--new_height", type=int, default=0, help='resize image height')
-    parser.add_argument("--num_gpu", type=int, default=8, help='number of GPU, default = 8')
+    parser.add_argument("--num_gpu", type=int, default=1, help='number of GPU, default = 1')
     parser.add_argument("--starting_gpu", type=int, default=0, help='ID of first GPU to use, default = 0')
 
 # initialization
