@@ -311,7 +311,9 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             previous_user_evals = {}
         # Also add back in any video clips that were scored in the previous round for the given query and not included
         if self.user_matches:
-            previous_user_evals.update({int(clip): self.scores[int(clip)] for clip in self.user_matches})
+            for clip, value in self.user_matches.items():
+                if value is True:
+                    previous_user_evals.update({int(clip): self.scores[int(clip)]})
         self.matches = dict(match_scores + near_match_scores)
         self.matches.update(previous_user_evals)
 
