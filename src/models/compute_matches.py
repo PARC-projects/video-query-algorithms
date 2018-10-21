@@ -2,6 +2,7 @@
 Public API to algorithms logic chain
 """
 from models import Ticket, TargetClip
+import os
 
 
 def compute_matches(query_updates, hyperparameters):
@@ -76,7 +77,11 @@ def compute_matches(query_updates, hyperparameters):
         ticket.compute_scores(hyperparameters.weights)
         if update_type == "finalize":
             max_number_matches = float("inf")  # add all matches to final report
-            near_miss = 0  # do not add any near misses to final report
+            # near_miss = 0  # do not add any near misses to final report
+            # add misses down to the lowest scoring user match, if its score is less than threshold
+            low_score, __ = ticket.lowest_scoring_user_match()
+            near_miss = max(hyperparameters.threshold - low_score, 0) / \
+                max(1 - hyperparameters.threshold, float(os.environ["COMPUTE_EPS"]))
         else:
             max_number_matches = ticket.number_of_matches_to_review
             near_miss = hyperparameters.near_miss_default

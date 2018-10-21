@@ -197,13 +197,13 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         params = {"id": query["search_set_to_query"]}
         search_set = self._request(action, params)
 
-        # create final report that contains scores of all matches
+    # create final report that contains scores of all matches
         file_name = 'final_report_query_{}_{}.csv'.format(query["name"], datetime.now().strftime('%m-%d-%Y_%Hh%Mm%Ss'))
         file = os.path.join('../final_reports/', file_name)
         if not os.path.exists('../final_reports/'):
             os.makedirs('../final_reports/')
 
-    # write the csv file
+        # write the csv file
         with open(file, 'x', newline='') as csvfile:
             reportwriter = csv.writer(csvfile)
             # header information
@@ -228,14 +228,16 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                 # This set includes matches either above the threshold score or explicitly scored
                 # by the user in this round, when compute_matches set
                 # max_number_matches = float("inf")  and near_miss = 0 before selecting matches for finalization.
-                # Otherwise, whatever matches are put in self.matches are reported here.
                 if str(video_clip_id) in self.user_matches:
                     if self.user_matches[str(video_clip_id)] is True:
                         match_type = "user-identified match"
                     else:
                         match_type = "user-identified non-match"
+                elif score >= query_result["match_criterion"]:
+                    match_type = "inferred match"
                 else:
-                    match_type = ""
+                    match_type = "inferred non-match"
+
                 action = ["video-clips", "read"]
                 params = {"id": video_clip_id}
                 video_clip = self._request(action, params)
@@ -280,6 +282,16 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         result = self._request(action, params)
         return result["id"]
 
+    def lowest_scoring_user_match(self):
+        min_score = 1
+        min_clip = None
+        for clip, score in self.scores.items():
+            if str(clip) in self.user_matches:
+                if self.user_matches[str(clip)] is True:
+                    min_score = min(min_score, score)
+                    min_clip = clip
+        return min_score, min_clip
+
     def select_matches(self, threshold=0.8, max_number_matches=20, near_miss=0.5):
         """
         Find matches and near matches for review,
@@ -309,7 +321,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             previous_user_evals = {self.ref_clip_id: self.scores[self.ref_clip_id]}
         else:
             previous_user_evals = {}
-        # Also add back in any video clips that were scored in the previous round for the given query and not included
+        # Also add back in any video clips that were user validated matches in the previous round and not included yet
         if self.user_matches:
             for clip, value in self.user_matches.items():
                 if value is True:
