@@ -17,7 +17,7 @@ class TargetClip:
         self.tuning_update = ticket.tuning_update
         self.hyperparameters = hyperparameters
         self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
-        self.target_features = {}
+        self.target_features = ticket.tuning_update["bootstrapped_target"]
 
     def get_target_features(self):
         """
@@ -41,6 +41,13 @@ class TargetClip:
             else:
                 self.target_features = self.scaled_ref_clip_features()
 
+    def avg_new_old_targets(self, new_target, splits):
+        for stream in self.hyperparameters.streams:
+            for split in splits:
+                new_target[stream][split] = self.hyperparameters.f_memory * new_target[stream][split] + \
+                                            (1 - self.hyperparameters.f_memory) * self.target_features[stream][split]
+        return new_target
+
     def dynamic_target_adjustment(self, list_of_feature_dictionaries, splits):
         """
         :param list_of_feature_dictionaries: Clip features dictionaries with
@@ -55,7 +62,8 @@ class TargetClip:
                                                             splits)
         else:
             new_target = self._bootstrap_valid_matches(list_of_feature_dictionaries, splits)
-        return new_target
+        # compute weighted average of new and old target, weighted by f_memory
+        return self.avg_new_old_targets(new_target, splits)
 
     def features_for_matches(self, user_match_value=True):
         """

@@ -70,7 +70,7 @@ def compute_matches(query_updates, hyperparameters):
         if update_type == 'new':
             new_round = 1
         else:
-            new_round = ticket.tuning_update["round"] + 1
+            new_round = ticket.latest_query_result["round"] + 1
         new_result_id = ticket.create_query_result(new_round, hyperparameters)
 
         # compute scores and determine new set of matches (for the next round or final report)
@@ -82,6 +82,7 @@ def compute_matches(query_updates, hyperparameters):
             low_score, __ = ticket.lowest_scoring_user_match()
             near_miss = max(hyperparameters.threshold - low_score, 0) / \
                 max(1 - hyperparameters.threshold, float(os.environ["COMPUTE_EPS"]))
+                # COMPUTE_EPS protects from divide by zero error if threshold happened to be very close to 1
         else:
             max_number_matches = ticket.number_of_matches_to_review
             near_miss = hyperparameters.near_miss_default

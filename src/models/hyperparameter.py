@@ -6,8 +6,8 @@ eps_threshold = float(os.environ["COMPUTE_EPS"])
 
 
 class Hyperparameter:
-    def __init__(self, default_weights, default_threshold=0.8, ballast=0.3, near_miss_default=0.5,
-                 streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', mu=.3, f_bootstrap=0.5):
+    def __init__(self, default_weights, default_threshold=0.8, ballast=0.3, near_miss_default=0.5, mu=.3,
+                 streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', f_bootstrap=0.5, f_memory=0.5):
         self.default_weights = default_weights  # e.g. {'rgb': 1.0, 'warped_optical_flow': 1.5}
         self.weights = {}
         self.default_threshold = default_threshold
@@ -20,6 +20,7 @@ class Hyperparameter:
         self.threshold_grid = np.arange(0.5, 1.1, 0.02)
         self.mu = mu
         self.f_bootstrap = f_bootstrap
+        self.f_memory = f_memory
         # TODO: add code to check if hyperparameters are in an allowable range, e.g. 0<f_bootstrap<=1
 
     def optimize_weights(self, ticket):

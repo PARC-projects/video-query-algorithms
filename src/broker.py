@@ -44,10 +44,13 @@ streams = (
 )
 feature_name = 'global_pool'
 mu = 0.05
-# f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping.
+# f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping. Using a value less than 1 is one
+# way to reduce overfitting.
 # The bootstrapped clips are adjusted for all streams and splits, so leaving some out of
 # bootstrapping forces the ensemble averaging to do more work.
-f_bootstrap = 0.6
+f_bootstrap = 1
+# In target bootstrapping, a new target is averaged with the old one as f_memory*new + (1-f_memory)*old
+f_memory = 0.7
 # ballast should be >=0 and <1.
 # False positives penalty reduced by (1-ballast), false negative penalty increased by (1+ballast)
 ballast = 0.0
@@ -64,10 +67,11 @@ def main():
             default_threshold,
             ballast,
             near_miss_default,
+            mu,
             streams,
             feature_name,
-            mu,
-            f_bootstrap
+            f_bootstrap,
+            f_memory
         )
 
         # If available, set random seed on enviroment to ease debugging

@@ -24,7 +24,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "ref_clip_id": pk for the reference video clip,
             "search_set": search set id
             "number_of_matches_to_review": number_of_matches
-            "tuning_update": for "revise" and "finalize" updates, QueryResult values for search tuning parameters
+            "latest_query_result": for "revise" and "finalize" updates, QueryResult values for search tuning parameters
                              for most recent round of the query
             "matches": for "revise" updates, matches of most recent round of the query
             "user_matches": dictionary of {video_clip: user_match} entries from earlier rounds
@@ -41,10 +41,10 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         self.search_set = update_object["search_set"]
         self.number_of_matches_to_review = update_object["number_of_matches_to_review"]
         self.dynamic_target_adjustment = update_object["dynamic_target_adjustment"]
-        if "tuning_update" in update_object:
-            self.tuning_update = update_object["tuning_update"]
+        if "latest_query_result" in update_object:
+            self.latest_query_result = update_object["latest_query_result"]
         else:
-            self.tuning_update = None
+            self.latest_query_result = None
         if "matches" in update_object:
             self.matches = update_object["matches"]
         if "user_matches" in update_object:
@@ -218,8 +218,19 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             reportwriter.writerow(['stream weights:', str(query_result["weights"])])
             reportwriter.writerow(['Target bootstrapping:', query["use_dynamic_target_adjustment"]])
             reportwriter.writerow(['query notes:', query["notes"]])
+            reportwriter.writerow(['Hyperparameters:'])
+            reportwriter.writerow(['', 'default weights:', str(hyperparameters.default_weights)])
+            reportwriter.writerow(['', 'default threshold:', str(hyperparameters.default_threshold)])
+            reportwriter.writerow(['', 'near miss default:', str(hyperparameters.near_miss_default)])
+            reportwriter.writerow(['', 'feature name:', str(hyperparameters.feature_name)])
+            reportwriter.writerow(['', 'ballast:', str(hyperparameters.ballast)])
+            reportwriter.writerow(['', 'mu:', str(hyperparameters.mu)])
+            reportwriter.writerow(['', 'f_bootstrap:', str(hyperparameters.f_bootstrap)])
+            reportwriter.writerow(['', 'f_memory:', str(hyperparameters.f_memory)])
             reportwriter.writerow([''])
             # write out a row for each video clip that is a selected match
+            reportwriter.writerow(['List of all clips with scores greater than min(threshold, score of lowest scoring'
+                                   ' user validated match)'])
             reportwriter.writerow(['clip #', 'start time', 'match type', 'video pk', 'video clip id', 'score',
                                    'duration', 'notes'])
             clip_rows = []
@@ -278,6 +289,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "match_criterion": hyperparameters.threshold,
             "weights": weights_values,
             "query": self.query_id,
+            "bootstrapped_target": self.target.target_features
         }
         result = self._request(action, params)
         return result["id"]
