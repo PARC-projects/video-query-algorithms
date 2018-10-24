@@ -108,7 +108,7 @@ def compute_matches(query_updates, hyperparameters):
 
 
 def catch_no_matches_error(ticket):
-    mround = ticket.tuning_update["round"] if ticket.tuning_update else 1
+    mround = ticket.latest_query_result["round"] if ticket.latest_query_result else 1
     error_message = "*** Error: No matches were found for round {} of query {}! ***".format(mround, ticket.query_id)
     ticket.change_process_state(5, message=error_message)
     return

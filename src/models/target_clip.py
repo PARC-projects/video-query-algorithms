@@ -14,10 +14,13 @@ class TargetClip:
         self.client = ticket.client
         self.schema = ticket.schema
         self.bootstrap_target = ticket.dynamic_target_adjustment
-        self.tuning_update = ticket.tuning_update
+        self.latest_query_result = ticket.latest_query_result
         self.hyperparameters = hyperparameters
         self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
-        self.target_features = ticket.tuning_update["bootstrapped_target"]
+        if ticket.latest_query_result["bootstrapped_target"]:
+            self.target_features = ticket.latest_query_result["bootstrapped_target"]
+        else:
+            self.target_features = None
 
     def get_target_features(self):
         """
@@ -28,7 +31,7 @@ class TargetClip:
         Output: self.target_features dictionary, of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
-        if not self.bootstrap_target or self.tuning_update is None:
+        if not self.bootstrap_target or self.latest_query_result is None:
             self.target_features = self.scaled_ref_clip_features()
         else:
             # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
@@ -42,10 +45,11 @@ class TargetClip:
                 self.target_features = self.scaled_ref_clip_features()
 
     def avg_new_old_targets(self, new_target, splits):
-        for stream in self.hyperparameters.streams:
-            for split in splits:
-                new_target[stream][split] = self.hyperparameters.f_memory * new_target[stream][split] + \
-                                            (1 - self.hyperparameters.f_memory) * self.target_features[stream][split]
+        if self.target_features is not None:
+            for stream in self.hyperparameters.streams:
+                for split in splits:
+                    new_target[stream][split] = self.hyperparameters.f_memory * new_target[stream][split] + \
+                                                (1-self.hyperparameters.f_memory) * self.target_features[stream][split]
         return new_target
 
     def dynamic_target_adjustment(self, list_of_feature_dictionaries, splits):
@@ -81,7 +85,7 @@ class TargetClip:
         matches = []
         while page is not None:
             action = ["matches", "list"]
-            params = {"query_result": self.tuning_update["id"], "page": page}
+            params = {"query_result": self.latest_query_result["id"], "page": page}
             results = self._request(action, params)
             matches.extend(results["results"])
             page = results["pagination"]["nextPage"]
