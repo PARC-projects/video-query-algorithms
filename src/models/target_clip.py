@@ -60,8 +60,7 @@ class TargetClip:
             self.target_features = self.dynamic_target_adjustment(features_4_matches, features_invalid_matches,
                                                                   splits_4_matches, self.hyperparameters.f_bootstrap,
                                                                   replacement=False)
-            if self.previous_target_features:
-                self.avg_new_old_targets(splits_4_matches)
+            self.avg_new_old_targets(splits_4_matches)
             return
 
         # Case 5: For bootstrapping by bagging
@@ -74,6 +73,8 @@ class TargetClip:
             raise Exception("Error: bootstrap_type should be one of 'simple', 'partial_update', or 'bagging'")
 
     def avg_new_old_targets(self, splits):
+        if not self.previous_target_features:
+            return
         for stream in self.hyperparameters.streams:
             for split in splits:
                 self.target_features[stream][split] = \
