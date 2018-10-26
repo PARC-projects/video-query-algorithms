@@ -10,6 +10,7 @@ import numpy as np
 import random
 from time import sleep
 import logging
+import json
 
 
 class Ticket:   # base_url is the api url.  The default is the dev default.
@@ -289,7 +290,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "match_criterion": hyperparameters.threshold,
             "weights": weights_values,
             "query": self.query_id,
-            "bootstrapped_target": self.target.target_features
+            "bootstrapped_target": json.dumps(self.target.target_features)
         }
         result = self._request(action, params)
         return result["id"]

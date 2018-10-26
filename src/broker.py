@@ -44,6 +44,8 @@ streams = (
 )
 feature_name = 'global_pool'
 mu = 0.05
+bootstrap_type = 'bagging'  # type of bootstrapping, one of 'simple', 'bagging', or 'partial_update'
+nbags = 3
 # f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping. Using a value less than 1 is one
 # way to reduce overfitting.
 # The bootstrapped clips are adjusted for all streams and splits, so leaving some out of
@@ -71,7 +73,9 @@ def main():
             streams,
             feature_name,
             f_bootstrap,
-            f_memory
+            f_memory,
+            bootstrap_type,
+            nbags
         )
 
         # If available, set random seed on enviroment to ease debugging

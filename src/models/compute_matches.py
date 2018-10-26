@@ -82,7 +82,7 @@ def compute_matches(query_updates, hyperparameters):
             low_score, __ = ticket.lowest_scoring_user_match()
             near_miss = max(hyperparameters.threshold - low_score, 0) / \
                 max(1 - hyperparameters.threshold, float(os.environ["COMPUTE_EPS"]))
-                # COMPUTE_EPS protects from divide by zero error if threshold happened to be very close to 1
+            # COMPUTE_EPS protects from divide by zero error if threshold happened to be very close to 1
         else:
             max_number_matches = ticket.number_of_matches_to_review
             near_miss = hyperparameters.near_miss_default

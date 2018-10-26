@@ -5,6 +5,7 @@ from api.authenticate import authenticate
 from requests import ConnectionError
 import coreapi
 import os
+import json
 from time import sleep
 
 
@@ -51,7 +52,8 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_revision(self):
         action = ["query-state", "compute-revised", "list"]
-        return self.client.action(self.schema, action)
+        result = self.client.action(self.schema, action)
+        return self._json_load_plus_convert_split_key(result)
 
     def _get_query_ready_for_new_matches(self):
         action = ["query-state", "compute-new", "list"]
@@ -59,4 +61,14 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_finalize(self):
         action = ["query-state", "compute-finalize", "list"]
-        return self.client.action(self.schema, action)
+        result = self.client.action(self.schema, action)
+        return self._json_load_plus_convert_split_key(result)
+
+    @staticmethod
+    def _json_load_plus_convert_split_key(result):
+        result["bootstrapped_target"] = json.loads(result["bootstrapped_target"])
+        for stream, split_dict in result["bootstrapped_target"].items():
+            for split in split_dict:
+                result["bootstrapped_target"][stream][int(split)] = \
+                    result["bootstrapped_target"][stream].pop(split)
+        return result
