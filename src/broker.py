@@ -43,7 +43,7 @@ streams = (
     'warped_optical_flow'
 )
 feature_name = 'global_pool'
-mu = 0.05
+mu = 0.0
 bootstrap_type = 'bagging'  # type of bootstrapping, one of 'simple', 'bagging', or 'partial_update'
 nbags = 3
 # f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping. Using a value less than 1 is one
