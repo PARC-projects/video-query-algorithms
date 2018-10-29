@@ -228,6 +228,9 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             reportwriter.writerow(['', 'mu:', str(hyperparameters.mu)])
             reportwriter.writerow(['', 'f_bootstrap:', str(hyperparameters.f_bootstrap)])
             reportwriter.writerow(['', 'f_memory:', str(hyperparameters.f_memory)])
+            reportwriter.writerow(['', 'bootstrap type:', str(hyperparameters.bootstrap_type)])
+            if hyperparameters.bootstrap_type == "bagging":
+                reportwriter.writerow(['', 'number of bags:', str(hyperparameters.nbags)])
             reportwriter.writerow([''])
             # write out a row for each video clip that is a selected match
             reportwriter.writerow(['List of all clips with scores greater than min(threshold, score of lowest scoring'
@@ -305,7 +308,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                     min_clip = clip
         return min_score, min_clip
 
-    def select_matches(self, threshold=0.8, max_number_matches=20, near_miss=0.5):
+    def select_clips_to_review(self, threshold=0.8, max_number_matches=20, near_miss=0.5):
         """
         Find matches and near matches for review,
         half being above threshold and half for 1-(1+near_miss)*(1-threshold) < score < threshold.
@@ -324,22 +327,27 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         near_match_candidates = {k: v for k, v in self.scores.items() if lower_limit <= v < threshold}
 
         # randomly select to stay within user defined max number of matches to evaluate
+        # Note: if the number of candidates is fewer than the user defined max, use all candidates
         mscores = min(max_number_matches / 2, len(match_candidates)).__int__()
         m_near_scores = min(max_number_matches - mscores, len(near_match_candidates)).__int__()
         match_scores = random.sample(match_candidates.items(), mscores)
-        near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
+        # hold back one slot for the near miss with highest score
+        near_match_scores = random.sample(near_match_candidates.items(), m_near_scores-1)
+        near_match_max_key = max(near_match_candidates, key=lambda key: near_match_candidates[key])
+        near_match_max = {near_match_max_key: self.scores[near_match_max_key]}
+        # create dictionary with the random sampling of matches and near matches
+        self.matches = dict(match_scores + near_match_scores + near_match_max)
 
         # make sure reference clip is included if it is in the search set for this ticket
+        # Also add back in any video clips that were user validated matches in the previous round and not included yet
         if self.ref_clip_id in self.scores:
             previous_user_evals = {self.ref_clip_id: self.scores[self.ref_clip_id]}
         else:
             previous_user_evals = {}
-        # Also add back in any video clips that were user validated matches in the previous round and not included yet
         if self.user_matches:
             for clip, value in self.user_matches.items():
                 if value is True:
                     previous_user_evals.update({int(clip): self.scores[int(clip)]})
-        self.matches = dict(match_scores + near_match_scores)
         self.matches.update(previous_user_evals)
 
     def _get_candidate_features(self, splits, hyperparameters):

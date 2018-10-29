@@ -37,7 +37,7 @@ default_weights = {
     'warped_optical_flow': 1.5
 }
 default_threshold = 0.8
-near_miss_default = 0.5
+near_miss_default = 0.35
 streams = (
     'rgb',
     'warped_optical_flow'

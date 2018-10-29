@@ -143,7 +143,7 @@ class TargetClip:
         return ref_features
 
     def target_by_bagging(self, features_4_matches, features_invalid_matches, splits):
-        bagging_targets = []
+        bagging_targets = {}
         for bag in range(self.hyperparameters.nbags):
             bagging_targets[bag] = self.dynamic_target_adjustment(features_4_matches, features_invalid_matches,
                                                                   splits, b_fraction=1, replacement=True)
@@ -156,7 +156,7 @@ class TargetClip:
                 bagging_consolidated[stream][split] = []
                 for bag in range(self.hyperparameters.nbags):
                     bagging_consolidated[stream][split].append(bagging_targets[bag][stream][split])
-                self.target_features[stream][split] = np.average(bagging_consolidated[stream][split], axis=0)
+                self.target_features[stream][split] = np.average(bagging_consolidated[stream][split], axis=0).tolist()
 
     def _bootstrap_valid_matches(self, list_of_feature_dictionaries, splits, b_fraction=1, replacement=False):
         """

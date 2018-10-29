@@ -50,14 +50,14 @@ class Hyperparameter:
                 match_status[match['video_clip']] = match["is_match"]  # For clips the user did not evaluate
 
         # compute loss function and find minimum.
-        # Loss = 0 for correct scores
-        # Loss = abs(score - th) for false positive
-        # Loss = abs(score - th)*(1 + ballast) for false negative
+        # Loss = 0.5 * threshold for correct scores
+        # For false positives, add abs(score - th) to Loss
+        # For fals negatives, add abs(score - th)*(1 + ballast) to Loss
         losses = 100 * np.ones([self.weight_grid.shape[0], self.threshold_grid.shape[0]])     # initialize loss matrix
         for iw, w in enumerate(self.weight_grid):
             ticket.compute_scores({self.streams[0]: 1.0, self.streams[1]: w})
             for ith, th in enumerate(self.threshold_grid):
-                loss = 0
+                loss = 0.5 * th
                 for video_clip_id in match_status:
                     score = ticket.scores[video_clip_id]
                     loss += (np.heaviside(score - th, 1) - match_status[video_clip_id]) * (score - th) \

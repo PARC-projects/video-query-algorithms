@@ -52,8 +52,7 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_revision(self):
         action = ["query-state", "compute-revised", "list"]
-        result = self.client.action(self.schema, action)
-        return self._json_load_plus_convert_split_key(result)
+        return self._load_plus_convert_split_key(action)
 
     def _get_query_ready_for_new_matches(self):
         action = ["query-state", "compute-new", "list"]
@@ -61,14 +60,19 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_finalize(self):
         action = ["query-state", "compute-finalize", "list"]
-        result = self.client.action(self.schema, action)
-        return self._json_load_plus_convert_split_key(result)
+        return self._load_plus_convert_split_key(action)
 
-    @staticmethod
-    def _json_load_plus_convert_split_key(result):
-        result["bootstrapped_target"] = json.loads(result["bootstrapped_target"])
-        for stream, split_dict in result["bootstrapped_target"].items():
-            for split in split_dict:
-                result["bootstrapped_target"][stream][int(split)] = \
-                    result["bootstrapped_target"][stream].pop(split)
+    def _load_plus_convert_split_key(self, action):
+        # Check if the result exists (i.e. is not None), and if it exists, if it contains a bootstrapped
+        # target. If it does, convert the retrieved target dictionary so splits are integers rather than
+        # strings, to be consistent with api models.
+        result = self.client.action(self.schema, action)
+        if result:
+            if result["latest_query_result"]["bootstrapped_target"]:
+                target_dict = json.loads(result["latest_query_result"]["bootstrapped_target"])
+                for stream, split_dict in target_dict.items():
+                    for split in split_dict:
+                        target_dict[stream][int(split)] = \
+                            target_dict[stream].pop(split)
+                result["latest_query_result"]["bootstrapped_target"] = target_dict
         return result

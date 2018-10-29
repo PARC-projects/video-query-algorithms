@@ -86,7 +86,7 @@ def compute_matches(query_updates, hyperparameters):
         else:
             max_number_matches = ticket.number_of_matches_to_review
             near_miss = hyperparameters.near_miss_default
-        ticket.select_matches(hyperparameters.threshold, max_number_matches, near_miss)
+        ticket.select_clips_to_review(hyperparameters.threshold, max_number_matches, near_miss)
 
         # catch errors that results in no matches being returned
         if not ticket.matches:
