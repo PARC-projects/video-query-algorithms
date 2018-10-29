@@ -332,11 +332,16 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         m_near_scores = min(max_number_matches - mscores, len(near_match_candidates)).__int__()
         match_scores = random.sample(match_candidates.items(), mscores)
         # hold back one slot for the near miss with highest score
-        near_match_scores = random.sample(near_match_candidates.items(), m_near_scores-1)
-        near_match_max_key = max(near_match_candidates, key=lambda key: near_match_candidates[key])
-        near_match_max = {near_match_max_key: self.scores[near_match_max_key]}
+        near_match_max = {}
+        if m_near_scores > 0:
+            m_near_scores = m_near_scores - 1
+            near_match_max_key = max(near_match_candidates, key=lambda key: near_match_candidates[key])
+            near_match_max = {near_match_max_key: self.scores[near_match_max_key]}
+            near_match_candidates.pop(near_match_max_key)
+        near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
         # create dictionary with the random sampling of matches and near matches
-        self.matches = dict(match_scores + near_match_scores + near_match_max)
+        self.matches = dict(match_scores + near_match_scores)
+        self.matches.update(near_match_max)
 
         # make sure reference clip is included if it is in the search set for this ticket
         # Also add back in any video clips that were user validated matches in the previous round and not included yet
