@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Preconditions:
-# Set TSN_ROOT environment variable to the root of the temporal segment netowrks code
+# Set TSN_ROOT environment variable to the root of the temporal segment networks code
 # Set TSN_ENVIRONMENT to the name of the conda environment used to run temporal segment netowrks code,
 #      or setup the virtual environment beforehand
 source activate $TSN_ENVIRON
@@ -18,7 +18,7 @@ python $TSN_ROOT/tools/calcSig_wOF.py ${SRC_FOLDER} \
  --outFeatures_dir ${OUT_FOLDER}  \
  --num_worker ${NUM_WORKER}  --modelname UCF101_split1 --gpus 0 1 2 3 4 5 6 7
 
-# features computed using split1 models
+# features computed using split2 models
 python $TSN_ROOT/tools/calcSig_wOF.py ${SRC_FOLDER} \
  $TSN_ROOT/models/ucf101/tsn_bn_inception_rgb_deploy.prototxt \
  $TSN_ROOT/models/ucf101_split2_tsn_rgb_bn_inception_wOF_test3_iter_3500.caffemodel \
@@ -27,7 +27,7 @@ python $TSN_ROOT/tools/calcSig_wOF.py ${SRC_FOLDER} \
  --outFeatures_dir ${OUT_FOLDER}  \
  --num_worker ${NUM_WORKER}  --modelname UCF101_split2 --gpus 0 1 2 3 4 5 6 7
 
-# features computed using split1 models
+# features computed using split3 models
  python $TSN_ROOT/tools/calcSig_wOF.py ${SRC_FOLDER} \
  $TSN_ROOT/models/ucf101/tsn_bn_inception_rgb_deploy.prototxt \
  $TSN_ROOT/models/ucf101_split3_tsn_rgb_bn_inception_wOF_test3_iter_3500.caffemodel \

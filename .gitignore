@@ -2,6 +2,7 @@
 src/daemon/query-broker/logs
 /.idea
 .set_environ.sh
+*.caffemodel
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
