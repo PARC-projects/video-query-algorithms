@@ -14,47 +14,92 @@ class TargetClip:
         self.client = ticket.client
         self.schema = ticket.schema
         self.bootstrap_target = ticket.dynamic_target_adjustment
-        self.tuning_update = ticket.tuning_update
+        self.latest_query_result = ticket.latest_query_result
         self.hyperparameters = hyperparameters
         self.ref_clip_features, self.splits = self._get_clip_features(ticket.ref_clip_id)
+        self.previous_target_features = None
         self.target_features = {}
+        if ticket.latest_query_result:
+            if ticket.latest_query_result["bootstrapped_target"]:
+                self.previous_target_features = ticket.latest_query_result["bootstrapped_target"]
 
     def get_target_features(self):
         """
         Method to compute dictionary of target features for the current state of query with id = ticket.query_id.
         Depending on dynamic target adjustment setting, either choose ref clip as the target or adjust the target
-        based on all user confirmed matches.
+        based on user confirmed matches.
 
         Output: self.target_features dictionary, of the form { <stream type>: {<split #>:[<feature>], ...} }
                 self.splits = splits present within self.target_features
         """
-        if not self.bootstrap_target or self.tuning_update is None:
+        # Case 1: no bootstrapping, either because bootstrap_target is False or there is nothing to bootstrap
+        if not self.bootstrap_target or self.latest_query_result is None:
             self.target_features = self.scaled_ref_clip_features()
+            return
+
+        # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
+        # Load features for confirmed invalid matches into a second list of feature dictionaries
+        # Also get all splits present in the feature dictionaries for confirmed matches
+        features_4_matches, splits_4_matches = self.features_for_matches(user_match_value=True)
+        features_invalid_matches, __ = self.features_for_matches(user_match_value=False)
+
+        # Case 2: If no validated matches are found to bootstrap, no bootstrapping can be done
+        if not features_4_matches:
+            self.target_features = self.scaled_ref_clip_features()
+            return
+
+        # Case 3: For simple bootstrapping
+        elif self.hyperparameters.bootstrap_type == 'simple':
+            self.target_features = self.dynamic_target_adjustment(features_4_matches, features_invalid_matches,
+                                                                  splits_4_matches, self.hyperparameters.f_bootstrap,
+                                                                  replacement=False)
+            return
+
+        # Case 4: For partial update (averaging new and old target) bootstrapping
+        elif self.hyperparameters.bootstrap_type == 'partial_update':
+            self.target_features = self.dynamic_target_adjustment(features_4_matches, features_invalid_matches,
+                                                                  splits_4_matches, self.hyperparameters.f_bootstrap,
+                                                                  replacement=False)
+            self.avg_new_old_targets(splits_4_matches)
+            return
+
+        # Case 5: For bootstrapping by bagging
+        elif self.hyperparameters.bootstrap_type == 'bagging':
+            self.target_by_bagging(features_4_matches, features_invalid_matches, splits_4_matches)
+            return
+
+        # If none of the above, raise an exception
         else:
-            # Load features for confirmed matches into a list of feature dictionaries: [<features dictionary 1>, ...]
-            # Also return all splits present in the feature dictionaries
-            features_4_matches, splits_4_matches = self.features_for_matches(user_match_value=True)
+            raise Exception("Error: bootstrap_type should be one of 'simple', 'partial_update', or 'bagging'")
 
-            # Compute the new target using dynamic target adjustment, unless there are no confirmed matches
-            if features_4_matches:
-                self.target_features = self.dynamic_target_adjustment(features_4_matches, splits_4_matches)
-            else:
-                self.target_features = self.scaled_ref_clip_features()
+    def avg_new_old_targets(self, splits):
+        if not self.previous_target_features:
+            return
+        for stream in self.hyperparameters.streams:
+            for split in splits:
+                self.target_features[stream][split] = \
+                    np.multiply(self.hyperparameters.f_memory, self.target_features[stream][split]) + \
+                    np.multiply((1-self.hyperparameters.f_memory), self.previous_target_features[stream][split])
 
-    def dynamic_target_adjustment(self, list_of_feature_dictionaries, splits):
+    def dynamic_target_adjustment(self, list_of_feature_dictionaries, list_invalid_feature_dicts, splits, b_fraction,
+                                  replacement=False):
         """
         :param list_of_feature_dictionaries: Clip features dictionaries with
                                              entries { <stream type>: {<split #>:[<feature>], ...} }
+        :param list_invalid_feature_dicts: Clip features dictionaries with
+                                             entries { <stream type>: {<split #>:[<feature>], ...} }
         :param splits: splits for which dynamic target adjustment will be done
+        :param b_fraction: fraction of validated samples to use to bootstrap a new target
+        :param replacement: True of False: whether to sample with replacement
         returns dictionary of new target features in the format { <stream type>: {<split #>:[<target feature>], ...} }
         """
         # Check for user_match=False data points, and use if available. Otherwise, use only user_match=True data.
-        features_invalid_matches, splits_invalid_matches = self.features_for_matches(user_match_value=False)
-        if features_invalid_matches:
-            new_target = self._bootstrap_valid_plus_invalid(list_of_feature_dictionaries, features_invalid_matches,
-                                                            splits)
+        if list_invalid_feature_dicts:
+            new_target = self._bootstrap_valid_plus_invalid(list_of_feature_dictionaries, list_invalid_feature_dicts,
+                                                            splits, b_fraction, replacement)
         else:
-            new_target = self._bootstrap_valid_matches(list_of_feature_dictionaries, splits)
+            new_target = self._bootstrap_valid_matches(list_of_feature_dictionaries, splits, b_fraction, replacement)
+        # compute weighted average of new and old target, weighted by f_memory
         return new_target
 
     def features_for_matches(self, user_match_value=True):
@@ -73,7 +118,7 @@ class TargetClip:
         matches = []
         while page is not None:
             action = ["matches", "list"]
-            params = {"query_result": self.tuning_update["id"], "page": page}
+            params = {"query_result": self.latest_query_result["id"], "page": page}
             results = self._request(action, params)
             matches.extend(results["results"])
             page = results["pagination"]["nextPage"]
@@ -94,10 +139,26 @@ class TargetClip:
         for stream, split_features in self.ref_clip_features.items():
             ref_features[stream] = {}
             for split, feature in split_features.items():
-                ref_features[stream][split] = self._scale_feature(feature)
+                ref_features[stream][split] = self._scale_feature(feature).tolist()
         return ref_features
 
-    def _bootstrap_valid_matches(self, list_of_feature_dictionaries, splits):
+    def target_by_bagging(self, features_4_matches, features_invalid_matches, splits):
+        bagging_targets = {}
+        for bag in range(self.hyperparameters.nbags):
+            bagging_targets[bag] = self.dynamic_target_adjustment(features_4_matches, features_invalid_matches,
+                                                                  splits, b_fraction=1, replacement=True)
+        bagging_consolidated = {}
+        self.target_features = {}
+        for stream in self.hyperparameters.streams:
+            bagging_consolidated[stream] = {}
+            self.target_features[stream] = {}
+            for split in splits:
+                bagging_consolidated[stream][split] = []
+                for bag in range(self.hyperparameters.nbags):
+                    bagging_consolidated[stream][split].append(bagging_targets[bag][stream][split])
+                self.target_features[stream][split] = np.average(bagging_consolidated[stream][split], axis=0).tolist()
+
+    def _bootstrap_valid_matches(self, list_of_feature_dictionaries, splits, b_fraction=1, replacement=False):
         """
         Compute a new target for the features in list_of_features_dictionaries, presuming each one to be
         for a user_match=True video clip.  Randomly select half the features for forming the new target
@@ -116,8 +177,9 @@ class TargetClip:
             for split in splits:
                 features[stream][split] = []
 
-        # select half of the matching clips, at random
-        list_of_feature_dictionaries = self._random_fraction(list_of_feature_dictionaries)
+        # select fraction of the matching clips, at random, if needed
+        if b_fraction != 1 or replacement is True:
+            list_of_feature_dictionaries = self._random_fraction(list_of_feature_dictionaries, b_fraction, replacement)
 
         # Extract features from each match for each (stream, split) duo, and store as a list of features
         for feature_dictionary in list_of_feature_dictionaries:  # one feature_dictionary for each match
@@ -134,10 +196,10 @@ class TargetClip:
                 M_inv = np.linalg.inv(M)
                 mu = np.sum(M_inv, axis=1).reshape([-1, 1])
                 new_target[stream_type][split] = np.dot(X, mu).T.tolist()[0]
-
         return new_target
 
-    def _bootstrap_valid_plus_invalid(self, list_valid_feature_dictionaries, list_invalid_feature_dictionaries, splits):
+    def _bootstrap_valid_plus_invalid(self, list_valid_feature_dictionaries, list_invalid_feature_dictionaries, splits,
+                                      b_fraction=1, replacement=False):
         """
         Compute a new target, where features in list_valid_features_dictionaries are for user_match=True clips,
         and features in list_invalid_features_dictionaries are for user_match=False clips.
@@ -162,8 +224,10 @@ class TargetClip:
                 yfeatures[stream][split] = []
 
         # select half of the matching clips and half of invalid match clips, at random
-        list_valid_feature_dictionaries = self._random_fraction(list_valid_feature_dictionaries)
-        list_invalid_feature_dictionaries = self._random_fraction(list_invalid_feature_dictionaries)
+        list_valid_feature_dictionaries = self._random_fraction(list_valid_feature_dictionaries, b_fraction,
+                                                                replacement)
+        list_invalid_feature_dictionaries = self._random_fraction(list_invalid_feature_dictionaries, b_fraction,
+                                                                  replacement)
 
         # Extract features for each match for each (stream, split) duo, and store as a list of features
         for feature_dictionary in list_valid_feature_dictionaries:  # one feature_dictionary for each match
@@ -194,7 +258,6 @@ class TargetClip:
                 w_3 = np.sum(np.matmul(w_2, scale * Y.T), axis=1).reshape([-1, 1])
                 w_final = w_3 + np.sum(w_1, axis=1).reshape([-1, 1])
                 new_target[stream_type][split] = w_final.T.tolist()[0]
-
         return new_target
 
     def _get_clip_features(self, clip_id):
@@ -231,12 +294,18 @@ class TargetClip:
                 msg = 'Try API request by Target again: action = {}, params = {}'.format(action, params)
                 logging.warning(msg)
 
-    def _random_fraction(self, flist):
+    @staticmethod
+    def _random_fraction(flist, fraction, replacement):
         # select a random list of items from flist, with fraction set by self.hyperparameters.f_bootstrap
+        # select either with or without replacement
         nmatches = len(flist)
-        tmatches = round(nmatches * self.hyperparameters.f_bootstrap)
+        tmatches = round(nmatches * fraction)
         tmatches = max(tmatches, 1)  # make sure at least one item is selected
-        tsamples = random.sample(range(nmatches), tmatches)
+        if replacement is False:
+            tsamples = random.sample(range(nmatches), tmatches)
+        else:
+            tsamples = random.choices(range(nmatches), k=tmatches)
+        tsamples = list(set(tsamples))  # list of unique values
         return [flist[m] for m in tsamples]
 
     @staticmethod

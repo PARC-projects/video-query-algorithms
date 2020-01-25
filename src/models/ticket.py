@@ -10,6 +10,7 @@ import numpy as np
 import random
 from time import sleep
 import logging
+import json
 
 
 class Ticket:   # base_url is the api url.  The default is the dev default.
@@ -24,7 +25,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "ref_clip_id": pk for the reference video clip,
             "search_set": search set id
             "number_of_matches_to_review": number_of_matches
-            "tuning_update": for "revise" and "finalize" updates, QueryResult values for search tuning parameters
+            "latest_query_result": for "revise" and "finalize" updates, QueryResult values for search tuning parameters
                              for most recent round of the query
             "matches": for "revise" updates, matches of most recent round of the query
             "user_matches": dictionary of {video_clip: user_match} entries from earlier rounds
@@ -41,10 +42,10 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         self.search_set = update_object["search_set"]
         self.number_of_matches_to_review = update_object["number_of_matches_to_review"]
         self.dynamic_target_adjustment = update_object["dynamic_target_adjustment"]
-        if "tuning_update" in update_object:
-            self.tuning_update = update_object["tuning_update"]
+        if "latest_query_result" in update_object:
+            self.latest_query_result = update_object["latest_query_result"]
         else:
-            self.tuning_update = None
+            self.latest_query_result = None
         if "matches" in update_object:
             self.matches = update_object["matches"]
         if "user_matches" in update_object:
@@ -218,8 +219,22 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             reportwriter.writerow(['stream weights:', str(query_result["weights"])])
             reportwriter.writerow(['Target bootstrapping:', query["use_dynamic_target_adjustment"]])
             reportwriter.writerow(['query notes:', query["notes"]])
+            reportwriter.writerow(['Hyperparameters:'])
+            reportwriter.writerow(['', 'default weights:', str(hyperparameters.default_weights)])
+            reportwriter.writerow(['', 'default threshold:', str(hyperparameters.default_threshold)])
+            reportwriter.writerow(['', 'near miss default:', str(hyperparameters.near_miss_default)])
+            reportwriter.writerow(['', 'feature name:', str(hyperparameters.feature_name)])
+            reportwriter.writerow(['', 'ballast:', str(hyperparameters.ballast)])
+            reportwriter.writerow(['', 'mu:', str(hyperparameters.mu)])
+            reportwriter.writerow(['', 'f_bootstrap:', str(hyperparameters.f_bootstrap)])
+            reportwriter.writerow(['', 'f_memory:', str(hyperparameters.f_memory)])
+            reportwriter.writerow(['', 'bootstrap type:', str(hyperparameters.bootstrap_type)])
+            if hyperparameters.bootstrap_type == "bagging":
+                reportwriter.writerow(['', 'number of bags:', str(hyperparameters.nbags)])
             reportwriter.writerow([''])
             # write out a row for each video clip that is a selected match
+            reportwriter.writerow(['List of all clips with scores greater than min(threshold, score of lowest scoring'
+                                   ' user validated match)'])
             reportwriter.writerow(['clip #', 'start time', 'match type', 'video pk', 'video clip id', 'score',
                                    'duration', 'notes'])
             clip_rows = []
@@ -278,6 +293,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
             "match_criterion": hyperparameters.threshold,
             "weights": weights_values,
             "query": self.query_id,
+            "bootstrapped_target": json.dumps(self.target.target_features)
         }
         result = self._request(action, params)
         return result["id"]
@@ -292,7 +308,7 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
                     min_clip = clip
         return min_score, min_clip
 
-    def select_matches(self, threshold=0.8, max_number_matches=20, near_miss=0.5):
+    def select_clips_to_review(self, threshold=0.8, max_number_matches=20, near_miss=0.5):
         """
         Find matches and near matches for review,
         half being above threshold and half for 1-(1+near_miss)*(1-threshold) < score < threshold.
@@ -311,22 +327,32 @@ class Ticket:   # base_url is the api url.  The default is the dev default.
         near_match_candidates = {k: v for k, v in self.scores.items() if lower_limit <= v < threshold}
 
         # randomly select to stay within user defined max number of matches to evaluate
+        # Note: if the number of candidates is fewer than the user defined max, use all candidates
         mscores = min(max_number_matches / 2, len(match_candidates)).__int__()
         m_near_scores = min(max_number_matches - mscores, len(near_match_candidates)).__int__()
         match_scores = random.sample(match_candidates.items(), mscores)
+        # hold back one slot for the near miss with highest score
+        near_match_max = {}
+        if m_near_scores > 0:
+            m_near_scores = m_near_scores - 1
+            near_match_max_key = max(near_match_candidates, key=lambda key: near_match_candidates[key])
+            near_match_max = {near_match_max_key: self.scores[near_match_max_key]}
+            near_match_candidates.pop(near_match_max_key)
         near_match_scores = random.sample(near_match_candidates.items(), m_near_scores)
+        # create dictionary with the random sampling of matches and near matches
+        self.matches = dict(match_scores + near_match_scores)
+        self.matches.update(near_match_max)
 
         # make sure reference clip is included if it is in the search set for this ticket
+        # Also add back in any video clips that were user validated matches in the previous round and not included yet
         if self.ref_clip_id in self.scores:
             previous_user_evals = {self.ref_clip_id: self.scores[self.ref_clip_id]}
         else:
             previous_user_evals = {}
-        # Also add back in any video clips that were user validated matches in the previous round and not included yet
         if self.user_matches:
             for clip, value in self.user_matches.items():
                 if value is True:
                     previous_user_evals.update({int(clip): self.scores[int(clip)]})
-        self.matches = dict(match_scores + near_match_scores)
         self.matches.update(previous_user_evals)
 
     def _get_candidate_features(self, splits, hyperparameters):

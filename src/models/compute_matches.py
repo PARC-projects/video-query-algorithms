@@ -70,7 +70,7 @@ def compute_matches(query_updates, hyperparameters):
         if update_type == 'new':
             new_round = 1
         else:
-            new_round = ticket.tuning_update["round"] + 1
+            new_round = ticket.latest_query_result["round"] + 1
         new_result_id = ticket.create_query_result(new_round, hyperparameters)
 
         # compute scores and determine new set of matches (for the next round or final report)
@@ -82,10 +82,11 @@ def compute_matches(query_updates, hyperparameters):
             low_score, __ = ticket.lowest_scoring_user_match()
             near_miss = max(hyperparameters.threshold - low_score, 0) / \
                 max(1 - hyperparameters.threshold, float(os.environ["COMPUTE_EPS"]))
+            # COMPUTE_EPS protects from divide by zero error if threshold happened to be very close to 1
         else:
             max_number_matches = ticket.number_of_matches_to_review
             near_miss = hyperparameters.near_miss_default
-        ticket.select_matches(hyperparameters.threshold, max_number_matches, near_miss)
+        ticket.select_clips_to_review(hyperparameters.threshold, max_number_matches, near_miss)
 
         # catch errors that results in no matches being returned
         if not ticket.matches:
@@ -107,7 +108,7 @@ def compute_matches(query_updates, hyperparameters):
 
 
 def catch_no_matches_error(ticket):
-    mround = ticket.tuning_update["round"] if ticket.tuning_update else 1
+    mround = ticket.latest_query_result["round"] if ticket.latest_query_result else 1
     error_message = "*** Error: No matches were found for round {} of query {}! ***".format(mround, ticket.query_id)
     ticket.change_process_state(5, message=error_message)
     return

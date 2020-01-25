@@ -6,8 +6,9 @@ eps_threshold = float(os.environ["COMPUTE_EPS"])
 
 
 class Hyperparameter:
-    def __init__(self, default_weights, default_threshold=0.8, ballast=0.3, near_miss_default=0.5,
-                 streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', mu=.3, f_bootstrap=0.5):
+    def __init__(self, default_weights, default_threshold=0.8, ballast=0.3, near_miss_default=0.5, mu=.3,
+                 streams=('rgb', 'warped_optical_flow'), feature_name='global_pool', f_bootstrap=0.5, f_memory=0.5,
+                 bootstrap_type='simple', nbags=3):
         self.default_weights = default_weights  # e.g. {'rgb': 1.0, 'warped_optical_flow': 1.5}
         self.weights = {}
         self.default_threshold = default_threshold
@@ -20,6 +21,9 @@ class Hyperparameter:
         self.threshold_grid = np.arange(0.5, 1.1, 0.02)
         self.mu = mu
         self.f_bootstrap = f_bootstrap
+        self.f_memory = f_memory
+        self.bootstrap_type = bootstrap_type  # one of 'simple', 'bagging', or 'partial_update'
+        self.nbags = nbags
         # TODO: add code to check if hyperparameters are in an allowable range, e.g. 0<f_bootstrap<=1
 
     def optimize_weights(self, ticket):
@@ -46,14 +50,14 @@ class Hyperparameter:
                 match_status[match['video_clip']] = match["is_match"]  # For clips the user did not evaluate
 
         # compute loss function and find minimum.
-        # Loss = 0 for correct scores
-        # Loss = abs(score - th) for false positive
-        # Loss = abs(score - th)*(1 + ballast) for false negative
+        # Loss = 0.5 * threshold for correct scores
+        # For false positives, add abs(score - th) to Loss
+        # For fals negatives, add abs(score - th)*(1 + ballast) to Loss
         losses = 100 * np.ones([self.weight_grid.shape[0], self.threshold_grid.shape[0]])     # initialize loss matrix
         for iw, w in enumerate(self.weight_grid):
             ticket.compute_scores({self.streams[0]: 1.0, self.streams[1]: w})
             for ith, th in enumerate(self.threshold_grid):
-                loss = 0
+                loss = 0.5 * th
                 for video_clip_id in match_status:
                     score = ticket.scores[video_clip_id]
                     loss += (np.heaviside(score - th, 1) - match_status[video_clip_id]) * (score - th) \

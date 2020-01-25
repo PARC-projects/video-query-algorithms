@@ -5,6 +5,7 @@ from api.authenticate import authenticate
 from requests import ConnectionError
 import coreapi
 import os
+import json
 from time import sleep
 
 
@@ -33,7 +34,7 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
                 "number_of_matches_to_review": number_of_matches
                 "dynamic_target_adjustment": True or False, dynamically adjust target features for each round
             For 'revise' and 'finalize' queries:
-                "tuning_update":  QueryResult record for latest round, with round number and
+                "latest_query_result":  QueryResult record for latest round, with round number and
                                     match criterion and weights for tuning the search
                 "matches": matches of previous round,
                             i.e. with query_results field equal to that of previous round
@@ -51,7 +52,7 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_revision(self):
         action = ["query-state", "compute-revised", "list"]
-        return self.client.action(self.schema, action)
+        return self._load_plus_convert_split_key(action)
 
     def _get_query_ready_for_new_matches(self):
         action = ["query-state", "compute-new", "list"]
@@ -59,4 +60,19 @@ class APIRepository:   # base_url is the api url.  The default is the dev defaul
 
     def _get_query_ready_for_finalize(self):
         action = ["query-state", "compute-finalize", "list"]
-        return self.client.action(self.schema, action)
+        return self._load_plus_convert_split_key(action)
+
+    def _load_plus_convert_split_key(self, action):
+        # Check if the result exists (i.e. is not None), and if it exists, if it contains a bootstrapped
+        # target. If it does, convert the retrieved target dictionary so splits are integers rather than
+        # strings, to be consistent with api models.
+        result = self.client.action(self.schema, action)
+        if result:
+            if result["latest_query_result"]["bootstrapped_target"]:
+                target_dict = json.loads(result["latest_query_result"]["bootstrapped_target"])
+                for stream, split_dict in target_dict.items():
+                    for split in split_dict:
+                        target_dict[stream][int(split)] = \
+                            target_dict[stream].pop(split)
+                result["latest_query_result"]["bootstrapped_target"] = target_dict
+        return result

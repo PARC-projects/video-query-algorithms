@@ -37,17 +37,22 @@ default_weights = {
     'warped_optical_flow': 1.5
 }
 default_threshold = 0.8
-near_miss_default = 0.5
+near_miss_default = 0.35
 streams = (
     'rgb',
     'warped_optical_flow'
 )
 feature_name = 'global_pool'
-mu = 0.05
-# f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping.
+mu = 0.0
+bootstrap_type = 'bagging'  # type of bootstrapping, one of 'simple', 'bagging', or 'partial_update'
+nbags = 3
+# f_bootstrap is the fraction of matches and invalid clips to use in bootstrapping. Using a value less than 1 is one
+# way to reduce overfitting.
 # The bootstrapped clips are adjusted for all streams and splits, so leaving some out of
 # bootstrapping forces the ensemble averaging to do more work.
-f_bootstrap = 0.6
+f_bootstrap = 1
+# In target bootstrapping, a new target is averaged with the old one as f_memory*new + (1-f_memory)*old
+f_memory = 0.7
 # ballast should be >=0 and <1.
 # False positives penalty reduced by (1-ballast), false negative penalty increased by (1+ballast)
 ballast = 0.0
@@ -64,10 +69,13 @@ def main():
             default_threshold,
             ballast,
             near_miss_default,
+            mu,
             streams,
             feature_name,
-            mu,
-            f_bootstrap
+            f_bootstrap,
+            f_memory,
+            bootstrap_type,
+            nbags
         )
 
         # If available, set random seed on enviroment to ease debugging
