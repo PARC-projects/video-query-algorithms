@@ -18,6 +18,7 @@ from models import Hyperparameter
 ###########################################
 LOOP_EXECUTION_TIME = 5.0  # In seconds
 BASE_URL = "http://127.0.0.1:8000/"
+# BASE_URL = "http://localhost:1337"
 
 ###########################################
 # Logging Config
