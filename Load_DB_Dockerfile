@@ -1,0 +1,20 @@
+# pull official base image
+FROM python:3.7.4-alpine
+
+# create a directory for mounting and external folder contianing the videos of interest
+RUN mkdir /video_data
+
+# create working directory
+RUN mkdir /code/
+WORKDIR /code/
+
+# copy src code
+ADD src /code/src
+
+# install dependencies
+RUN apk add libffi-dev gcc
+COPY ./requirements.txt /code/
+RUN pip install -r requirements.txt
+
+# start bash shell for interactive running of load_db.py
+CMD ["/bin/sh"]
