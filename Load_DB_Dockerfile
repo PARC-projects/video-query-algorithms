@@ -13,7 +13,7 @@ ADD src /code/src
 
 # install dependencies
 RUN apk add libffi-dev gcc
-COPY ./requirements.txt /code/
+COPY ./requirements_load_db.txt /code/requirements.txt
 RUN pip install -r requirements.txt
 
 # start bash shell for interactive running of load_db.py
