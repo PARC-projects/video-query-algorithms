@@ -8,7 +8,7 @@ django-extensions==2.2.5
 django-filter==2.2.0
 django-filters==0.2.1
 djangorestframework==3.10.2
-ecdsa==0.13
+ecdsa==0.13.3
 gunicorn==19.9.0
 idna==2.6
 itypes==1.1.0
