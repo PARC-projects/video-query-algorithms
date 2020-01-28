@@ -1,3 +1,7 @@
+############################
+# Compute
+############################
+
 FROM bitxiong/tsn
 
 # create a directory for mounting and external folder contianing the videos of interest

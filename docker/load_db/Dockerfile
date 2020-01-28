@@ -1,3 +1,7 @@
+############################
+# Load DB
+############################
+
 # pull official base image
 FROM python:3.7.4-alpine
 
@@ -13,7 +17,7 @@ ADD src /code/src
 
 # install dependencies
 RUN apk add libffi-dev gcc
-COPY ./requirements_load_db.txt /code/requirements.txt
+COPY ./requirements.txt /code/requirements.txt
 RUN pip install -r requirements.txt
 
 # start bash shell for interactive running of load_db.py
