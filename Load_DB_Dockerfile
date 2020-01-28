@@ -11,6 +11,8 @@ WORKDIR /code/
 # copy src code
 ADD src /code/src
 
+ADD mkdir /code/src/logs
+
 # install dependencies
 RUN apt-get update \
   && apt-get install -y python3-pip python3-dev \
