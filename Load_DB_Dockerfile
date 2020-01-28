@@ -1,5 +1,5 @@
 # pull official base image
-FROM python:3.7.4-alpine
+FROM ubuntu:latest
 
 # create a directory for mounting and external folder containing the videos of interest
 RUN mkdir /video_data
@@ -12,9 +12,14 @@ WORKDIR /code/
 ADD src /code/src
 
 # install dependencies
-RUN apk add libffi-dev gcc
+RUN apt-get update \
+  && apt-get install -y python3-pip python3-dev \
+  && cd /usr/local/bin \
+  && ln -s /usr/bin/python3 python \
+  && pip3 install --upgrade pip
+
 COPY ./requirements_load_db.txt /code/requirements.txt
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 # start bash shell for interactive running of load_db.py
 CMD ["/bin/sh"]
