@@ -21,6 +21,7 @@ pycparser==2.18
 Pygments==2.2.0
 pytz==2018.4
 requests==2.18.4
+scipy==0.19.1
 six==1.10.0
 sqlparse==0.3.0
 uritemplate==3.0.0
