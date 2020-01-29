@@ -1,5 +1,5 @@
 # pull official base image
-FROM ubuntu:latest
+FROM ubuntu:18.04
 
 # create a directory for mounting and external folder containing the videos of interest
 RUN mkdir /video_data
@@ -11,7 +11,8 @@ WORKDIR /code/
 # copy src code
 ADD src /code/src
 
-ADD mkdir /code/src/logs
+# create logs folder for broker.py
+RUN mkdir /code/src/logs
 
 # install dependencies
 RUN apt-get update \
