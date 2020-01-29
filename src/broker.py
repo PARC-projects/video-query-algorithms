@@ -79,7 +79,7 @@ def main():
             nbags
         )
 
-        # If available, set random seed on enviroment to ease debugging
+        # If available, set random seed on environment to ease debugging
         if os.environ["RANDOM_SEED"] != "None":
             random.seed(a=os.environ["RANDOM_SEED"])
 
