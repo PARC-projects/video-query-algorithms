@@ -15,7 +15,7 @@ itypes==1.1.0
 Jinja2==2.10
 Markdown==3.1.1
 MarkupSafe==1.0
-numpy==1.13.1
+numpy==1.22.0
 olefile==0.44
 pycparser==2.18
 Pygments==2.2.0
